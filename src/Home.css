@@ -549,3 +549,237 @@
   background: #e5e7eb;
   margin: 0.7rem 0;
 }
+
+/* ── Form fields / inputs / textareas ───────────────────────────── */
+
+.form-field {
+  margin-bottom: 0.6rem;
+}
+
+.form-label {
+  display: block;
+  font-size: 0.75rem;
+  margin-bottom: 0.2rem;
+  color: #4b5563;
+}
+
+.input,
+.textarea {
+  width: 100%;
+  border-radius: 12px;
+  border: 1px solid #d1d5db;
+  padding: 0.45rem 0.6rem;
+  font-size: 0.8rem;
+  font-family: inherit;
+  resize: vertical;
+}
+
+.textarea {
+  min-height: 4rem;
+}
+
+/* ── Mood pills row ─────────────────────────────────────────────── */
+
+.mood-row {
+  display: flex;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+}
+
+.mood-pill {
+  border-radius: 999px;
+  padding: 0.18rem 0.55rem;
+  font-size: 0.75rem;
+  border: 1px solid #e5e7eb;
+  background: #ffffff;
+}
+
+.mood-pill--strong {
+  background: #22c55e;
+  color: #ffffff;
+  border-color: #22c55e;
+  font-weight: 600;
+}
+
+/* ── Weekly log grid ───────────────────────────────────────────── */
+
+.log-week-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 0.25rem;
+  margin-top: 0.6rem;
+}
+
+.log-day {
+  border-radius: 12px;
+  background: #e5e7eb;
+  padding: 0.35rem 0.1rem;
+  text-align: center;
+  font-size: 0.7rem;
+}
+
+.log-day--good {
+  background: #dcfce7;
+}
+
+.log-day--ok {
+  background: #fef9c3;
+}
+
+.log-day--bad {
+  background: #fee2e2;
+}
+
+/* Pill toggle row (Goals, Trigger, Signup) */
+.pill-toggle-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.pill-toggle {
+  border-radius: 999px;
+  border: 1px solid #d1d5db;
+  padding: 0.25rem 0.6rem;
+  font-size: 0.75rem;
+  cursor: pointer;
+  background: #ffffff;
+}
+
+/* Optional active state if you add click logic later */
+.pill-toggle--active {
+  background: #1e40af;
+  color: #ffffff;
+  border-color: #1e40af;
+  box-shadow: 0 8px 16px rgba(30, 64, 175, 0.3);
+}
+
+/* Checkbox list (Trigger, Signup) */
+.checkbox-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-size: 0.8rem;
+}
+
+.checkbox-item {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.checkbox-item input {
+  accent-color: #1e40af;
+}
+
+/* Tabs row on FIND screen */
+.tabs {
+  display: flex;
+  gap: 0.35rem;
+  margin-bottom: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.tab-pill {
+  border-radius: 999px;
+  padding: 0.25rem 0.7rem;
+  font-size: 0.75rem;
+  border: 1px solid #e5e7eb;
+  background: #ffffff;
+  cursor: pointer;
+}
+
+.tab-pill--active {
+  background: #1e40af;
+  color: #ffffff;
+  border-color: #1e40af;
+  box-shadow: 0 8px 16px rgba(30, 64, 175, 0.35);
+}
+
+/* Search row */
+.search-row {
+  display: flex;
+  gap: 0.4rem;
+  margin-bottom: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.search-input {
+  flex: 1;
+  min-width: 0;
+  padding: 0.45rem 0.7rem;
+  border-radius: 999px;
+  border: 1px solid #d1d5db;
+  font-size: 0.8rem;
+}
+
+/* Primary button (shared) */
+.btn-primary {
+  border-radius: 999px;
+  border: none;
+  padding: 0.45rem 0.9rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  background: #1e40af;
+  color: #ffffff;
+  cursor: pointer;
+  box-shadow: 0 8px 18px rgba(30, 64, 175, 0.35);
+}
+
+/* Results list + cards */
+.results-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.results-item {
+  background: #f9fafb;
+  border-radius: 14px;
+  border: 1px solid #e5e7eb;
+  padding: 0.6rem 0.75rem;
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.results-item__name {
+  font-size: 0.9rem;
+  font-weight: 600;
+  margin: 0 0 0.15rem;
+}
+
+.results-item__meta {
+  font-size: 0.75rem;
+  color: #4b5563;
+  margin: 0;
+}
+
+.results-item__actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.25rem;
+  white-space: nowrap;
+}
+
+.badge-rating {
+  font-size: 0.7rem;
+  padding: 0.1rem 0.35rem;
+  border-radius: 999px;
+  background: #f97316;
+  color: #ffffff;
+  font-weight: 600;
+}
+
+.btn-ghost {
+  border-radius: 999px;
+  border: 1px solid #d1d5db;
+  background: #ffffff;
+  font-size: 0.75rem;
+  padding: 0.18rem 0.6rem;
+  cursor: pointer;
+}

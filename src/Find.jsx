@@ -1,293 +1,143 @@
 // src/Find.jsx
-import React, { useState, useEffect, useRef } from "react";
-import { Link, useSosToggle } from "./navigation";
+import React, { useState } from "react";
+import { useSosToggle } from "./navigation";
 import BottomNav, { SOSOverlay } from "./BottomNav";
 
-// Shared demo locations
-const demoLocations = [
-  {
-    id: 1,
-    name: "Hope Center",
-    city: "San Francisco",
-    status: "Open",
-    distance: "2.3 mi",
-    lat: 37.7749,
-    lng: -122.4194,
-  },
-  {
-    id: 2,
-    name: "Recovery House",
-    city: "Los Angeles",
-    status: "Open",
-    distance: "5.1 mi",
-    lat: 34.0522,
-    lng: -118.2437,
-  },
-  {
-    id: 3,
-    name: "Serenity Place",
-    city: "San Diego",
-    status: "Closed",
-    distance: "8.7 mi",
-    lat: 32.7157,
-    lng: -117.1611,
-  },
-  {
-    id: 4,
-    name: "New Beginnings",
-    city: "Oakland",
-    status: "Open",
-    distance: "3.2 mi",
-    lat: 37.8044,
-    lng: -122.2712,
-  },
-  {
-    id: 5,
-    name: "Safe Harbor",
-    city: "Sacramento",
-    status: "Open",
-    distance: "12.4 mi",
-    lat: 38.5816,
-    lng: -121.4944,
-  },
-];
-
-function Locations({
-  isAuthenticated,
-  viewMode = "map",
-  focusedLocation,
-  onRequestFocusLocation,
-}) {
-  const mapRef = useRef(null);
-  const mapInstanceRef = useRef(null);
-  const markersRef = useRef([]);
-
-  useEffect(() => {
-    // Expecting Leaflet global L (or import L from "leaflet")
-    if (!mapInstanceRef.current && typeof L !== "undefined") {
-      const map = L.map(mapRef.current, {
-        center: [37.0902, -95.7129],
-        zoom: 4,
-      });
-
-      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-        attribution: "© OpenStreetMap contributors",
-      }).addTo(map);
-
-      mapInstanceRef.current = map;
-
-      demoLocations.forEach((loc) => {
-        const icon = L.divIcon({
-          html: '<div class="location-marker">★</div>',
-          className: "",
-          iconSize: [30, 30],
-        });
-
-        const marker = L.marker([loc.lat, loc.lng], { icon })
-          .addTo(map)
-          .bindPopup(
-            `<strong>${loc.name}</strong><br>${loc.city}<br>${loc.status}`
-          );
-
-        markersRef.current.push({ id: loc.id, marker });
-      });
-    }
-
-    return () => {
-      if (mapInstanceRef.current) {
-        mapInstanceRef.current.remove();
-        mapInstanceRef.current = null;
-        markersRef.current = [];
-      }
-    };
-  }, []);
-
-  useEffect(() => {
-    if (mapInstanceRef.current) {
-      setTimeout(() => {
-        mapInstanceRef.current.invalidateSize();
-      }, 100);
-    }
-  }, [viewMode]);
-
-  useEffect(() => {
-    if (focusedLocation && mapInstanceRef.current) {
-      mapInstanceRef.current.setView(
-        [focusedLocation.lat, focusedLocation.lng],
-        12
-      );
-
-      const marker = markersRef.current.find(
-        (m) => m.id === focusedLocation.id
-      );
-      if (marker) {
-        marker.marker.openPopup();
-      }
-    }
-  }, [focusedLocation]);
-
-  const panelClass =
-    viewMode === "list"
-      ? "locations__panel locations__panel--card"
-      : "locations__panel locations__panel--ghost";
-
-  return (
-    <div className="locations">
-      <div ref={mapRef} className="locations__map" />
-
-      <div className="locations__content">
-        <div className={panelClass}>
-          <h2>{viewMode === "list" ? "Nearby Resources" : "Explore the Map"}</h2>
-          <p>
-            {viewMode === "list"
-              ? "Browse all locations below"
-              : "Use the map to explore locations near you"}
-          </p>
-
-          {viewMode === "list" && (
-            <>
-              <ul className="locations__list">
-                {demoLocations.map((loc) => (
-                  <li key={loc.id} className="locations__list-item">
-                    <div>
-                      <p className="locations__list-name">{loc.name}</p>
-                      <p className="locations__list-meta">
-                        {loc.city} • {loc.status}
-                      </p>
-                    </div>
-                    <div className="locations__list-actions">
-                      <span className="locations__list-distance">
-                        {loc.distance}
-                      </span>
-                      <button
-                        className="locations__map-button"
-                        onClick={() =>
-                          onRequestFocusLocation && onRequestFocusLocation(loc)
-                        }
-                      >
-                        Map
-                      </button>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-
-              {!isAuthenticated && (
-                <p className="locations__cta">
-                  Sign in to save your favorite locations and get personalized
-                  recommendations.
-                </p>
-              )}
-            </>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function Find({ isAuthenticated, username }) {
-  const [viewMode, setViewMode] = useState("map");
-  const [focusedLocation, setFocusedLocation] = useState(null);
+function Find() {
   const [sosOpen, setSosOpen] = useSosToggle();
-
-  const handleFocusLocation = (location) => {
-    setViewMode("map");
-    setFocusedLocation(location);
-  };
+  const [activeTab, setActiveTab] = useState("therapist");
+  const [search, setSearch] = useState("");
 
   return (
     <>
-      <nav className="app-nav app-nav--fixed">
-        <div className="app-nav__brand">
-          <h1 className="app-nav__logo">Circley</h1>
-          <div className="app-nav__tagline-row">
-            <p className="app-nav__tagline">Find Resources</p>
-            {isAuthenticated && username && (
-              <p className="app-nav__welcome">Welcome, {username}</p>
-            )}
-          </div>
+      <div className="home-page">
+        <div className="home-phone">
+          {/* Header – same shell as other screens */}
+          <header className="home-phone__header">
+            <div className="home-phone__brand">
+              <p className="home-phone__eyebrow">NextCircle.org</p>
+              <h1 className="home-phone__title">Circely</h1>
+            </div>
+          </header>
+
+          <main style={{ paddingTop: "0.5rem" }}>
+            <section>
+              <h2 className="section-title">
+                Find support
+                <span className="section-title__pill">Browse &amp; filter</span>
+              </h2>
+              <p className="section-subtitle">
+                Search therapists, treatment centers, meetings and sober living near you.
+              </p>
+
+              {/* Tabs row */}
+              <div className="tabs">
+                <button
+                  type="button"
+                  className={
+                    "tab-pill" +
+                    (activeTab === "therapist" ? " tab-pill--active" : "")
+                  }
+                  onClick={() => setActiveTab("therapist")}
+                >
+                  Therapists
+                </button>
+                <button
+                  type="button"
+                  className={
+                    "tab-pill" +
+                    (activeTab === "treatment" ? " tab-pill--active" : "")
+                  }
+                  onClick={() => setActiveTab("treatment")}
+                >
+                  Treatment
+                </button>
+                <button
+                  type="button"
+                  className={
+                    "tab-pill" +
+                    (activeTab === "meetings" ? " tab-pill--active" : "")
+                  }
+                  onClick={() => setActiveTab("meetings")}
+                >
+                  Meetings
+                </button>
+                <button
+                  type="button"
+                  className={
+                    "tab-pill" +
+                    (activeTab === "sober" ? " tab-pill--active" : "")
+                  }
+                  onClick={() => setActiveTab("sober")}
+                >
+                  Sober living
+                </button>
+              </div>
+
+              {/* Search row */}
+              <div className="search-row">
+                <input
+                  className="search-input"
+                  placeholder="Search by name, city, or keyword"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                />
+                <button type="button" className="btn-primary">
+                  Filter
+                </button>
+              </div>
+
+              {/* Results list – static sample cards, same as prototype */}
+              <ul className="results-list">
+                <li className="results-item">
+                  <div>
+                    <p className="results-item__name">Hope Recovery Therapy</p>
+                    <p className="results-item__meta">
+                      Outpatient • 0.8 miles • Accepts Medicaid
+                    </p>
+                  </div>
+                  <div className="results-item__actions">
+                    <span className="badge-rating">4.7 ★</span>
+                    <button type="button" className="btn-ghost">
+                      View
+                    </button>
+                  </div>
+                </li>
+
+                <li className="results-item">
+                  <div>
+                    <p className="results-item__name">Northside Counseling</p>
+                    <p className="results-item__meta">
+                      Therapist • Telehealth available
+                    </p>
+                  </div>
+                  <div className="results-item__actions">
+                    <span className="badge-rating">4.9 ★</span>
+                    <button type="button" className="btn-ghost">
+                      View
+                    </button>
+                  </div>
+                </li>
+
+                <li className="results-item">
+                  <div>
+                    <p className="results-item__name">Downtown Recovery Center</p>
+                    <p className="results-item__meta">
+                      Residential • 15 beds • Sliding scale
+                    </p>
+                  </div>
+                  <div className="results-item__actions">
+                    <span className="badge-rating">4.5 ★</span>
+                    <button type="button" className="btn-ghost">
+                      View
+                    </button>
+                  </div>
+                </li>
+              </ul>
+            </section>
+          </main>
         </div>
-
-        <div className="app-nav__menu">
-          <div className="app-nav__view-toggle">
-            <button
-              className={`app-nav__view-button ${
-                viewMode === "map" ? "is-active" : ""
-              }`}
-              onClick={() => setViewMode("map")}
-            >
-              Map
-            </button>
-            <button
-              className={`app-nav__view-button ${
-                viewMode === "list" ? "is-active" : ""
-              }`}
-              onClick={() => setViewMode("list")}
-            >
-              List
-            </button>
-          </div>
-
-          <div className="app-nav__auth">
-            {isAuthenticated ? (
-              <>
-                <span className="app-nav__user">{username}</span>
-                <Link
-                  href="/logout/"
-                  style={{
-                    padding: "0.4rem 0.9rem",
-                    background: "#ef4444",
-                    color: "#ffffff",
-                    borderRadius: "999px",
-                    fontWeight: 600,
-                    fontSize: "0.9rem",
-                  }}
-                >
-                  Logout
-                </Link>
-              </>
-            ) : (
-              <>
-                <Link
-                  href="/login/"
-                  style={{
-                    padding: "0.4rem 0.9rem",
-                    background: "transparent",
-                    color: "#1e40af",
-                    borderRadius: "999px",
-                    fontWeight: 600,
-                    fontSize: "0.9rem",
-                    border: "1px solid #1e40af",
-                  }}
-                >
-                  Login
-                </Link>
-                <Link
-                  href="/signup/"
-                  style={{
-                    padding: "0.4rem 0.9rem",
-                    background: "#1e40af",
-                    color: "#ffffff",
-                    borderRadius: "999px",
-                    fontWeight: 600,
-                    fontSize: "0.9rem",
-                  }}
-                >
-                  Join
-                </Link>
-              </>
-            )}
-          </div>
-        </div>
-      </nav>
-
-      <Locations
-        isAuthenticated={isAuthenticated}
-        viewMode={viewMode}
-        focusedLocation={focusedLocation}
-        onRequestFocusLocation={handleFocusLocation}
-      />
+      </div>
 
       <BottomNav active="/find/" />
       <SOSOverlay isOpen={sosOpen} onClose={() => setSosOpen(false)} />
