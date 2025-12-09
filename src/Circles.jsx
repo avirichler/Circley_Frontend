@@ -1,22 +1,10 @@
 // src/Circles.jsx
-
 import React, { useState } from "react";
-import "./Home.css";
+import { useSosToggle } from "./navigation";
+import BottomNav, { SOSOverlay } from "./BottomNav";
 
-/**
- * Circles page
- *
- * - Shows a list of example Circles (for now, local-only)
- * - Lets the user create a new Circle with:
- *    - name (required)
- *    - short description
- *    - visibility (Public / Private)
- *
- * TODO: Wire this up to your real backend:
- *   - Replace the local state with a GET / POST to your API
- *   - Show server-side validation errors, etc.
- */
 export default function Circles() {
+  const [sosOpen, setSosOpen] = useSosToggle();
   const [circles, setCircles] = useState([
     {
       id: 1,
@@ -55,161 +43,191 @@ export default function Circles() {
       name: name.trim(),
       description: description.trim(),
       visibility,
-      members: 1, // creator counts as first member (for now, just a mock)
+      members: 1,
     };
 
     setCircles((prev) => [newCircle, ...prev]);
     setName("");
     setDescription("");
     setVisibility("public");
-    setSuccess("Your Circle was created (locally). Hook this up to your backend to save it.");
+    setSuccess("Circle created successfully!");
+
+    setTimeout(() => setSuccess(""), 3000);
   };
 
   return (
-    <div className="page-shell">
-      <header className="page-header">
-        <h1 className="page-title">Circles</h1>
-        <p className="page-subtitle">
-          Join existing Circles or start your own safe space for support.
-        </p>
-      </header>
-
-      <main className="page-content">
-        {/* Create Circle card */}
-        <section className="card card-emphasis">
-          <h2 className="section-title">Create a Circle</h2>
-          <p className="section-description">
-            Circles are small, focused groups for ongoing support. You can invite others later.
-          </p>
-
-          <form className="form" onSubmit={handleCreateCircle}>
-            <div className="form-field">
-              <label className="form-label" htmlFor="circle-name">
-                Circle name<span className="form-label-required">*</span>
-              </label>
-              <input
-                id="circle-name"
-                type="text"
-                className="form-input"
-                placeholder="e.g. Young Parents in Recovery"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-              />
+    <>
+      <div className="home-page">
+        <div className="home-phone">
+          <header className="home-phone__header">
+            <div className="home-phone__brand">
+              <p className="home-phone__eyebrow">NextCircle.org</p>
+              <h1 className="home-phone__title">Circely</h1>
             </div>
+          </header>
 
-            <div className="form-field">
-              <label className="form-label" htmlFor="circle-description">
-                Short description
-              </label>
-              <textarea
-                id="circle-description"
-                className="form-textarea"
-                placeholder="What is this Circle about? Who is it for?"
-                rows={3}
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-              />
-            </div>
+          <main style={{ paddingTop: "0.5rem" }}>
+            <section>
+              <h2 className="section-title">
+                Circles
+                <span className="section-title__pill">Community</span>
+              </h2>
+              <p className="section-subtitle">
+                Join existing Circles or start your own safe space for support.
+              </p>
 
-            <div className="form-field">
-              <span className="form-label">Visibility</span>
-              <div className="radio-group">
-                <label className="radio-option">
-                  <input
-                    type="radio"
-                    name="circle-visibility"
-                    value="public"
-                    checked={visibility === "public"}
-                    onChange={(e) => setVisibility(e.target.value)}
-                  />
-                  <span className="radio-label">
-                    Public
-                    <span className="radio-label-sub">
-                      Discoverable in search. Anyone can request to join.
-                    </span>
-                  </span>
-                </label>
+              <div className="card">
+                <h3 style={{ fontSize: "0.95rem", margin: "0 0 0.4rem" }}>
+                  Create a Circle
+                </h3>
+                <p className="section-subtitle" style={{ marginTop: 0 }}>
+                  Circles are small, focused groups for ongoing support.
+                </p>
 
-                <label className="radio-option">
-                  <input
-                    type="radio"
-                    name="circle-visibility"
-                    value="private"
-                    checked={visibility === "private"}
-                    onChange={(e) => setVisibility(e.target.value)}
-                  />
-                  <span className="radio-label">
-                    Private
-                    <span className="radio-label-sub">
-                      Only people with an invite link can find and join.
-                    </span>
-                  </span>
-                </label>
+                <form onSubmit={handleCreateCircle}>
+                  <div className="form-field">
+                    <label className="form-label" htmlFor="circle-name">
+                      Circle name
+                    </label>
+                    <input
+                      id="circle-name"
+                      type="text"
+                      className="input"
+                      placeholder="e.g. Young Parents in Recovery"
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                    />
+                  </div>
+
+                  <div className="form-field">
+                    <label className="form-label" htmlFor="circle-description">
+                      Short description
+                    </label>
+                    <textarea
+                      id="circle-description"
+                      className="textarea"
+                      placeholder="What is this Circle about?"
+                      rows={3}
+                      value={description}
+                      onChange={(e) => setDescription(e.target.value)}
+                    />
+                  </div>
+
+                  <div className="form-field">
+                    <label className="form-label">Visibility</label>
+                    <div className="pill-toggle-row">
+                      <button
+                        type="button"
+                        className={
+                          "pill-toggle" +
+                          (visibility === "public" ? " pill-toggle--active" : "")
+                        }
+                        onClick={() => setVisibility("public")}
+                      >
+                        Public
+                      </button>
+                      <button
+                        type="button"
+                        className={
+                          "pill-toggle" +
+                          (visibility === "private" ? " pill-toggle--active" : "")
+                        }
+                        onClick={() => setVisibility("private")}
+                      >
+                        Private
+                      </button>
+                    </div>
+                    <p style={{ fontSize: "0.7rem", color: "#6b7280", margin: "0.3rem 0 0" }}>
+                      {visibility === "public"
+                        ? "Discoverable in search. Anyone can request to join."
+                        : "Only people with an invite link can find and join."}
+                    </p>
+                  </div>
+
+                  {error && (
+                    <div
+                      style={{
+                        padding: "0.5rem 0.7rem",
+                        background: "#fee2e2",
+                        borderRadius: "8px",
+                        marginBottom: "0.6rem",
+                      }}
+                    >
+                      <p style={{ margin: 0, color: "#dc2626", fontSize: "0.8rem" }}>
+                        {error}
+                      </p>
+                    </div>
+                  )}
+
+                  {success && (
+                    <div
+                      style={{
+                        padding: "0.5rem 0.7rem",
+                        background: "#dcfce7",
+                        borderRadius: "8px",
+                        marginBottom: "0.6rem",
+                      }}
+                    >
+                      <p style={{ margin: 0, color: "#059669", fontSize: "0.8rem" }}>
+                        {success}
+                      </p>
+                    </div>
+                  )}
+
+                  <button
+                    type="submit"
+                    className="btn-primary"
+                    style={{ width: "100%", marginTop: "0.4rem" }}
+                  >
+                    Create Circle
+                  </button>
+                </form>
               </div>
-            </div>
 
-            {error && <p className="form-message form-message-error">{error}</p>}
-            {success && <p className="form-message form-message-success">{success}</p>}
+              <div className="divider" />
 
-            <div className="form-actions">
-              <button type="submit" className="primary-button">
-                Create Circle
-              </button>
-            </div>
-          </form>
-        </section>
+              <div className="card">
+                <h3 style={{ fontSize: "0.95rem", margin: "0 0 0.4rem" }}>
+                  Explore Circles
+                </h3>
+                <p className="section-subtitle" style={{ marginTop: 0 }}>
+                  Join existing support circles in your area.
+                </p>
 
-        {/* Existing Circles list */}
-        <section className="card">
-          <h2 className="section-title">Explore Circles</h2>
-          <p className="section-description">
-            These are sample Circles stored locally. Later, this should come from your API.
-          </p>
+                {circles.length === 0 ? (
+                  <p style={{ fontSize: "0.8rem", color: "#6b7280", textAlign: "center" }}>
+                    No Circles yet. Be the first to create one!
+                  </p>
+                ) : (
+                  <ul className="results-list">
+                    {circles.map((circle) => (
+                      <li key={circle.id} className="results-item">
+                        <div>
+                          <p className="results-item__name">{circle.name}</p>
+                          <p className="results-item__meta">
+                            {circle.description}
+                          </p>
+                          <p className="results-item__meta">
+                            {circle.visibility === "public" ? "Public" : "Private"} • {circle.members} member{circle.members === 1 ? "" : "s"}
+                          </p>
+                        </div>
+                        <div className="results-item__actions">
+                          <button type="button" className="btn-ghost">
+                            Join
+                          </button>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            </section>
+          </main>
+        </div>
+      </div>
 
-          {circles.length === 0 ? (
-            <p className="empty-state-text">
-              No Circles yet. Be the first to create one!
-            </p>
-          ) : (
-            <ul className="list list-circles">
-              {circles.map((circle) => (
-                <li key={circle.id} className="list-item circle-item">
-                  <div className="circle-item-main">
-                    <h3 className="circle-name">{circle.name}</h3>
-                    {circle.description && (
-                      <p className="circle-description">{circle.description}</p>
-                    )}
-                  </div>
-                  <div className="circle-meta">
-                    <span className="badge badge-pill">
-                      {circle.visibility === "public" ? "Public" : "Private"}
-                    </span>
-                    <span className="circle-members">
-                      {circle.members} member{circle.members === 1 ? "" : "s"}
-                    </span>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          )}
-        </section>
-
-        {/* Coming soon / help text */}
-        <section className="card card-subtle">
-          <h2 className="section-title">What happens next?</h2>
-          <p className="section-description">
-            In the full app, creating a Circle would:
-          </p>
-          <ul className="bullet-list">
-            <li>Save your Circle to the backend via an API call.</li>
-            <li>Generate a shareable invite link.</li>
-            <li>Let you set simple rules and add moderators.</li>
-          </ul>
-          <p className="section-description">
-            For now, this screen is a working prototype so you can play with the flow and layout.
-          </p>
-        </section>
-      </main>
-    </div>
+      <BottomNav active="/circles/" />
+      <SOSOverlay isOpen={sosOpen} onClose={() => setSosOpen(false)} />
+    </>
   );
 }
