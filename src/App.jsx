@@ -11,12 +11,12 @@ import Verify from "./Verify";
 
 import {
   Login,
-  Signup,
   UserAccount,
   AdminHome,
   PlaceholderPage,
   NotFound,
 } from "./pages";
+import Signup from "./Signup";
 
 export default function App() {
   const { path, navigate } = useNavigation();
