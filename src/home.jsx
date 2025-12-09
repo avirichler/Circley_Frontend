@@ -11,7 +11,9 @@ function Home({ username, isAuthenticated, sobrietyDays = 45 }) {
   const handleBackdropClick = () => setActiveModal(null);
 
   const handlePillClick = (route) => {
-    navigate(route);
+    if (route) {
+      navigate(route);
+    }
     setActiveModal(null);
   };
 
@@ -21,32 +23,85 @@ function Home({ username, isAuthenticated, sobrietyDays = 45 }) {
     const modals = {
       find: {
         pills: [
-          { label: "All Resources", position: "top", route: "/find/" },
-          { label: "Therapist", position: "right", route: "/find/therapist/" },
+          // Matches HTML: top = Therapist
+          {
+            label: "Therapist",
+            position: "top",
+            route: "/find/therapist/",
+          },
+          // right = Sober Living
           {
             label: "Sober Living",
-            position: "bottom",
+            position: "right",
             route: "/find/sober-living/",
           },
-          { label: "Meetings", position: "left", route: "/find/meetings/" },
+          // bottom = Treatment
+          {
+            label: "Treatment",
+            position: "bottom",
+            route: "/find/treatment/",
+          },
+          // left = Meetings
+          {
+            label: "Meetings",
+            position: "left",
+            route: "/find/meetings/",
+          },
         ],
         centerLabel: "FIND",
       },
+
       circles: {
+        // Matches HTML: My Circles / Join Circle / Create Circle / Invites
         pills: [
-          { label: "Placeholder 1", position: "top" },
-          { label: "Placeholder 2", position: "right" },
-          { label: "Placeholder 3", position: "bottom" },
-          { label: "Placeholder 4", position: "left" },
+          {
+            label: "My Circles",
+            position: "top",
+            route: "/circles/",
+          },
+          {
+            label: "Join Circle",
+            position: "right",
+            route: "/circles/join/",
+          },
+          {
+            label: "Create Circle",
+            position: "bottom",
+            route: "/circles/create/",
+          },
+          {
+            label: "Invites",
+            position: "left",
+            route: "/circles/invites/",
+          },
         ],
         centerLabel: "CIRCLES",
       },
+
       log: {
+        // Matches HTML: Milestone / Trigger / Goal / Daily Log
+        // For now they all go to /log/ so you don’t get 404s.
         pills: [
-          { label: "Placeholder 1", position: "top" },
-          { label: "Placeholder 2", position: "right" },
-          { label: "Placeholder 3", position: "bottom" },
-          { label: "Placeholder 4", position: "left" },
+          {
+            label: "Milestone",
+            position: "top",
+            route: "/log/",
+          },
+          {
+            label: "Trigger",
+            position: "right",
+            route: "/log/",
+          },
+          {
+            label: "Goal",
+            position: "bottom",
+            route: "/log/",
+          },
+          {
+            label: "Daily Log",
+            position: "left",
+            route: "/log/",
+          },
         ],
         centerLabel: "LOG",
       },
@@ -74,7 +129,7 @@ function Home({ username, isAuthenticated, sobrietyDays = 45 }) {
               <button
                 key={idx}
                 className={`home-modal__pill home-modal__pill--${pill.position}`}
-                onClick={() => pill.route && handlePillClick(pill.route)}
+                onClick={() => handlePillClick(pill.route)}
               >
                 {pill.label}
               </button>
@@ -91,8 +146,8 @@ function Home({ username, isAuthenticated, sobrietyDays = 45 }) {
         <div className="home-phone">
           <header className="home-phone__header">
             <div className="home-phone__brand">
-              <p className="home-phone__eyebrow">Recovery Network</p>
-              <h1 className="home-phone__title">Circley</h1>
+              <p className="home-phone__eyebrow">NextCircle.org</p>
+              <h1 className="home-phone__title">Circely</h1>
             </div>
             {isAuthenticated ? (
               <div className="home-phone__auth">
@@ -109,15 +164,15 @@ function Home({ username, isAuthenticated, sobrietyDays = 45 }) {
                   href="/signup/"
                   className="home-phone__auth-link home-phone__auth-link--primary"
                 >
-                  Join
+                  Join now
                 </Link>
               </div>
             )}
           </header>
 
           <div className="home-phone__sobriety">
-            <p className="home-phone__sobriety-label">Days Sober</p>
-            <p className="home-phone__sobriety-value">{sobrietyDays}</p>
+            <p className="home-phone__sobriety-label">You've been sober for</p>
+            <p className="home-phone__sobriety-value">{sobrietyDays} days</p>
           </div>
 
           <div className="home-phone__actions">
@@ -125,24 +180,27 @@ function Home({ username, isAuthenticated, sobrietyDays = 45 }) {
               className="home-circle-button home-circle-button--circles"
               onClick={() => setActiveModal("circles")}
             >
-              Circles
+              CIRCLES
             </button>
             <button
               className="home-circle-button home-circle-button--find"
               onClick={() => setActiveModal("find")}
             >
-              Find
+              FIND
             </button>
             <button
               className="home-circle-button home-circle-button--log"
               onClick={() => setActiveModal("log")}
             >
-              Log
+              LOG
             </button>
           </div>
 
           <div className="home-phone__quote">
-            <p>"One day at a time. Progress, not perfection."</p>
+            <p>
+              "Recovery is not a race. You don’t have to feel guilty if it takes
+              you longer than you thought it would."
+            </p>
           </div>
         </div>
       </div>

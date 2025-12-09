@@ -450,3 +450,102 @@
     bottom: 0.5rem;
   }
 }
+
+/* ── Shared section headings (used by Circles, Log, etc.) ─────────── */
+
+.section-title {
+  font-size: 1.1rem;
+  font-weight: 700;
+  margin: 0.25rem 0 0.4rem;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.section-title__pill {
+  font-size: 0.65rem;
+  padding: 0.1rem 0.4rem;
+  border-radius: 999px;
+  background: #e5e7eb;
+  color: #4b5563;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.section-subtitle {
+  font-size: 0.8rem;
+  margin: 0 0 0.75rem;
+  color: #4b5563;
+}
+
+/* ── Generic card layout (Circles cards, etc.) ───────────────────── */
+
+.card {
+  background: #ffffff;
+  border-radius: 16px;
+  border: 1px solid #e5e7eb;
+  padding: 0.75rem 0.85rem;
+  margin-bottom: 0.6rem;
+  box-shadow: 0 8px 16px rgba(15, 23, 42, 0.04);
+}
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  align-items: center;
+  margin-bottom: 0.25rem;
+}
+
+.pill-soft {
+  font-size: 0.7rem;
+  padding: 0.15rem 0.45rem;
+  border-radius: 999px;
+  background: #ecfeff;
+  color: #155e75;
+}
+
+.card-meta-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.75rem;
+  color: #6b7280;
+}
+
+/* ── Button rows & buttons ───────────────────────────────────────── */
+
+.button-row {
+  display: flex;
+  gap: 0.4rem;
+  margin-top: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.btn-ghost {
+  border-radius: 999px;
+  border: 1px solid #d1d5db;
+  background: #ffffff;
+  font-size: 0.75rem;
+  padding: 0.18rem 0.6rem;
+  cursor: pointer;
+}
+
+.btn-primary {
+  border-radius: 999px;
+  border: none;
+  padding: 0.45rem 0.9rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  background: #1e40af;
+  color: #ffffff;
+  cursor: pointer;
+  box-shadow: 0 8px 18px rgba(30, 64, 175, 0.35);
+}
+
+/* ── Divider line ────────────────────────────────────────────────── */
+
+.divider {
+  height: 1px;
+  background: #e5e7eb;
+  margin: 0.7rem 0;
+}
