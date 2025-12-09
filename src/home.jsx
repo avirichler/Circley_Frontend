@@ -23,25 +23,21 @@ function Home({ username, isAuthenticated, sobrietyDays = 45 }) {
     const modals = {
       find: {
         pills: [
-          // Matches HTML: top = Therapist
           {
             label: "Therapist",
             position: "top",
             route: "/find/therapist/",
           },
-          // right = Sober Living
           {
             label: "Sober Living",
             position: "right",
             route: "/find/sober-living/",
           },
-          // bottom = Treatment
           {
             label: "Treatment",
             position: "bottom",
             route: "/find/treatment/",
           },
-          // left = Meetings
           {
             label: "Meetings",
             position: "left",
@@ -52,7 +48,6 @@ function Home({ username, isAuthenticated, sobrietyDays = 45 }) {
       },
 
       circles: {
-        // Matches HTML: My Circles / Join Circle / Create Circle / Invites
         pills: [
           {
             label: "My Circles",
@@ -79,23 +74,22 @@ function Home({ username, isAuthenticated, sobrietyDays = 45 }) {
       },
 
       log: {
-        // Matches HTML: Milestone / Trigger / Goal / Daily Log
-        // For now they all go to /log/ so you don’t get 404s.
+        // Use path segments instead of query params
         pills: [
           {
             label: "Milestone",
             position: "top",
-            route: "/log/",
+            route: "/log/milestone/",
           },
           {
             label: "Trigger",
             position: "right",
-            route: "/log/",
+            route: "/log/trigger/",
           },
           {
             label: "Goal",
             position: "bottom",
-            route: "/log/",
+            route: "/log/goal/",
           },
           {
             label: "Daily Log",

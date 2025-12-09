@@ -26,7 +26,10 @@ export default function App() {
     dateJoined: "Jan 12, 2024",
   });
 
-  const currentPath = normalizePath(path);
+  // If navigation is ever updated to include query, strip it,
+  // then normalize. If not, this is still safe.
+  const [rawPathname] = (path || "/").split("?");
+  const currentPath = normalizePath(rawPathname || "/");
 
   const handleLogin = ({ email }) => {
     setIsAuthenticated(true);
@@ -87,10 +90,18 @@ export default function App() {
       break;
 
     case "/circles/":
+    case "/circles/join/":
+    case "/circles/create/":
+    case "/circles/invites/":
       page = <Circles username={user.username} />;
       break;
 
+    // All log sub-paths render the same Log component,
+    // which decides what to show based on currentPath.
     case "/log/":
+    case "/log/milestone/":
+    case "/log/goal/":
+    case "/log/trigger/":
       page = <UserLog username={user.username} />;
       break;
 
@@ -141,7 +152,5 @@ export default function App() {
       page = <NotFound />;
   }
 
-  // Each page component renders its own BottomNav,
-  // so we only render the page here.
   return <>{page}</>;
 }
