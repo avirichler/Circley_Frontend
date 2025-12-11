@@ -67,7 +67,6 @@ export default function BottomNav({ active }) {
   const [isSosOpen, setIsSosOpen] = useState(false);
 
   useEffect(() => {
-    // Close SOS overlay on route change
     setIsSosOpen(false);
   }, [current]);
 
@@ -119,14 +118,15 @@ export default function BottomNav({ active }) {
           Rate
         </Link>
 
+        {/* 🔄 Updated from Verify → Check-In */}
         <Link
-          href="/verify/"
+          href="/checkin/"
           className={`home-bottom-nav__item ${
-            isActive("/verify/") ? "is-active" : ""
+            isActive("/checkin/") ? "is-active" : ""
           }`}
           onClick={closeSos}
         >
-          Verify
+          Check-In
         </Link>
       </nav>
 
