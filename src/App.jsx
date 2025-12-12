@@ -8,7 +8,7 @@ import Find from "./Find";
 import Circles from "./Circles";
 import UserLog from "./Log";
 // import Verify from "./Verify";   // ❌ no longer in bottom nav
-import CheckInPage from "./CheckInPage"; // ✅ NEW
+import CheckIn from "./CheckIn"; // ✅ NEW
 
 import {
   Login,
