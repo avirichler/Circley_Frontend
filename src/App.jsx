@@ -110,7 +110,7 @@ export default function App() {
 
     // ⭐️ NEW CHECK-IN ROUTE
     case "/checkin/":
-      page = <CheckInPage username={user.username} />;
+      page = <CheckIn username={user.username} />;
       break;
 
     // ❌ VERIFY is no longer part of bottom nav, but you can keep/remove
