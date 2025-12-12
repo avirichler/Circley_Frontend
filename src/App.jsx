@@ -7,7 +7,8 @@ import Home from "./home";
 import Find from "./Find";
 import Circles from "./Circles";
 import UserLog from "./Log";
-import Verify from "./Verify";
+// import Verify from "./Verify";   // ❌ no longer in bottom nav
+import CheckInPage from "./CheckInPage"; // ✅ NEW
 
 import {
   Login,
@@ -107,9 +108,15 @@ export default function App() {
       page = <UserLog username={user.username} />;
       break;
 
-    case "/verify/":
-      page = <Verify />;
+    // ⭐️ NEW CHECK-IN ROUTE
+    case "/checkin/":
+      page = <CheckInPage username={user.username} />;
       break;
+
+    // ❌ VERIFY is no longer part of bottom nav, but you can keep/remove
+    // case "/verify/":
+    //   page = <Verify />;
+    //   break;
 
     case "/account/":
       page = (
