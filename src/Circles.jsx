@@ -2,6 +2,7 @@
 import React, { useState } from "react";
 import { useSosToggle } from "./navigation";
 import BottomNav, { SOSOverlay } from "./BottomNav";
+import CardStack from "./CardStack";
 
 export default function Circles() {
   const [sosOpen, setSosOpen] = useSosToggle();
@@ -191,35 +192,54 @@ export default function Circles() {
                   Explore Circles
                 </h3>
                 <p className="section-subtitle" style={{ marginTop: 0 }}>
-                  Join existing support circles in your area.
+                  Swipe or drag to browse nearby circles.
                 </p>
 
-                {circles.length === 0 ? (
-                  <p style={{ fontSize: "0.8rem", color: "#6b7280", textAlign: "center" }}>
-                    No Circles yet. Be the first to create one!
-                  </p>
-                ) : (
-                  <ul className="results-list">
-                    {circles.map((circle) => (
-                      <li key={circle.id} className="results-item">
-                        <div>
-                          <p className="results-item__name">{circle.name}</p>
-                          <p className="results-item__meta">
-                            {circle.description}
-                          </p>
-                          <p className="results-item__meta">
-                            {circle.visibility === "public" ? "Public" : "Private"} • {circle.members} member{circle.members === 1 ? "" : "s"}
-                          </p>
-                        </div>
-                        <div className="results-item__actions">
-                          <button type="button" className="btn-ghost">
-                            Join
-                          </button>
-                        </div>
-                      </li>
-                    ))}
-                  </ul>
-                )}
+                <CardStack
+                  items={circles}
+                  renderCard={(circle) => (
+                    <>
+                      <div>
+                        <p style={{ fontSize: "0.65rem", color: "#6b7280", margin: "0 0 0.3rem", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                          {circle.visibility === "public" ? "Public" : "Private"}
+                        </p>
+                        <h4 style={{ fontSize: "1.1rem", fontWeight: "700", margin: "0 0 0.5rem", color: "#111827" }}>
+                          {circle.name}
+                        </h4>
+                        <p style={{ fontSize: "0.8rem", color: "#4b5563", margin: "0 0 1rem", lineHeight: "1.5" }}>
+                          {circle.description}
+                        </p>
+                      </div>
+                      <div>
+                        <p style={{ fontSize: "0.75rem", color: "#6b7280", margin: "0 0 0.6rem" }}>
+                          <span style={{ fontWeight: "600" }}>{circle.members}</span> member{circle.members === 1 ? "" : "s"}
+                        </p>
+                        <button
+                          type="button"
+                          style={{
+                            width: "100%",
+                            borderRadius: "999px",
+                            border: "none",
+                            padding: "0.5rem",
+                            fontSize: "0.8rem",
+                            fontWeight: "600",
+                            background: "#22c55e",
+                            color: "#ffffff",
+                            cursor: "pointer",
+                            boxShadow: "0 8px 16px rgba(34, 197, 94, 0.3)",
+                          }}
+                        >
+                          Join Circle
+                        </button>
+                      </div>
+                    </>
+                  )}
+                  onEmptyAction={() => (
+                    <p style={{ fontSize: "0.8rem", color: "#6b7280" }}>
+                      No circles yet. Be the first to create one!
+                    </p>
+                  )}
+                />
               </div>
             </section>
           </main>
