@@ -11,11 +11,54 @@ function Home({ username, isAuthenticated, sobrietyDays = 45 }) {
   const handleBackdropClick = () => setActiveModal(null);
 
   const handlePillClick = (route) => {
-    if (route) {
-      navigate(route);
-    }
+    if (route) navigate(route);
     setActiveModal(null);
   };
+
+  // Swipeable updates feed (first card = Today Summary w/ appointment + reminder + circle highlight)
+  const updates = [
+    {
+      id: "today",
+      type: "today",
+      title: "Today summary",
+      meta: "Dec 25 • 3 highlights",
+      body: "One step at a time — here’s what’s up next.",
+      highlights: [
+        { icon: "📅", text: "Therapy • 6:30 PM • Telehealth" },
+        { icon: "⏰", text: "Reminder • Pack for meeting • In 2 hours" },
+        { icon: "👥", text: "Circle • Sam: “Day 90 today… it gets lighter.”" },
+      ],
+    },
+    {
+      id: "appt-101",
+      type: "appointment",
+      title: "Upcoming appointment",
+      body: "Therapy session with Dr. Cohen",
+      meta: "Today • 6:30 PM • Telehealth",
+    },
+    {
+      id: "rem-204",
+      type: "reminder",
+      title: "Reminder",
+      body: "Pack your meeting book + plan your ride",
+      meta: "In 2 hours",
+    },
+    {
+      id: "circle-880",
+      type: "circle",
+      title: "From your circles",
+      body: "“Day 90 today. If you’re at day 1, I promise it gets lighter.”",
+      meta: "Sam • Serenity Circle",
+    },
+    {
+      id: "inspo-001",
+      type: "inspiration",
+      title: "Daily reminder",
+      body:
+        "Recovery is not a race. You don’t have to feel guilty if it takes you longer than you thought it would.",
+      meta: "Reflection • Anytime",
+    },
+  ];
 
   const renderModal = () => {
     if (!activeModal) return null;
@@ -23,85 +66,43 @@ function Home({ username, isAuthenticated, sobrietyDays = 45 }) {
     const modals = {
       find: {
         pills: [
-          {
-            label: "Therapist",
-            position: "top",
-            route: "/find/therapist/",
-          },
+          { label: "Therapist", position: "top", route: "/find/therapist/" },
           {
             label: "Sober Living",
             position: "right",
             route: "/find/sober-living/",
           },
-          {
-            label: "Treatment",
-            position: "bottom",
-            route: "/find/treatment/",
-          },
-          {
-            label: "Meetings",
-            position: "left",
-            route: "/find/meetings/",
-          },
+          { label: "Treatment", position: "bottom", route: "/find/treatment/" },
+          { label: "Meetings", position: "left", route: "/find/meetings/" },
         ],
         centerLabel: "FIND",
       },
-
       circles: {
         pills: [
-          {
-            label: "My Circles",
-            position: "top",
-            route: "/circles/",
-          },
-          {
-            label: "Join Circle",
-            position: "right",
-            route: "/circles/join/",
-          },
+          { label: "My Circles", position: "top", route: "/circles/" },
+          { label: "Join Circle", position: "right", route: "/circles/join/" },
           {
             label: "Create Circle",
             position: "bottom",
             route: "/circles/create/",
           },
-          {
-            label: "Invites",
-            position: "left",
-            route: "/circles/invites/",
-          },
+          { label: "Invites", position: "left", route: "/circles/invites/" },
         ],
         centerLabel: "CIRCLES",
       },
-
       log: {
-        // Use path segments instead of query params
         pills: [
-          {
-            label: "Milestone",
-            position: "top",
-            route: "/log/milestone/",
-          },
-          {
-            label: "Trigger",
-            position: "right",
-            route: "/log/trigger/",
-          },
-          {
-            label: "Goal",
-            position: "bottom",
-            route: "/log/goal/",
-          },
-          {
-            label: "Daily Log",
-            position: "left",
-            route: "/log/",
-          },
+          { label: "Milestone", position: "top", route: "/log/milestone/" },
+          { label: "Trigger", position: "right", route: "/log/trigger/" },
+          { label: "Goal", position: "bottom", route: "/log/goal/" },
+          { label: "Daily Log", position: "left", route: "/log/" },
         ],
         centerLabel: "LOG",
       },
     };
 
     const modalData = modals[activeModal];
+    if (!modalData) return null;
 
     return (
       <div className="home-modal__backdrop" onClick={handleBackdropClick}>
@@ -109,21 +110,22 @@ function Home({ username, isAuthenticated, sobrietyDays = 45 }) {
           <button
             className="home-modal__close"
             onClick={() => setActiveModal(null)}
+            type="button"
           >
             Close
           </button>
-          <div
-            className="home-modal__circle-layout"
-            data-mode={activeModal}
-          >
+
+          <div className="home-modal__circle-layout" data-mode={activeModal}>
             <div className="home-modal__center-circle">
               {modalData.centerLabel}
             </div>
+
             {modalData.pills.map((pill, idx) => (
               <button
-                key={idx}
+                key={`${pill.position}-${idx}`}
                 className={`home-modal__pill home-modal__pill--${pill.position}`}
                 onClick={() => handlePillClick(pill.route)}
+                type="button"
               >
                 {pill.label}
               </button>
@@ -143,6 +145,7 @@ function Home({ username, isAuthenticated, sobrietyDays = 45 }) {
               <p className="home-phone__eyebrow">NextCircle.org</p>
               <h1 className="home-phone__title">Circely</h1>
             </div>
+
             {isAuthenticated ? (
               <div className="home-phone__auth">
                 <p className="home-phone__welcome">
@@ -173,28 +176,76 @@ function Home({ username, isAuthenticated, sobrietyDays = 45 }) {
             <button
               className="home-circle-button home-circle-button--circles"
               onClick={() => setActiveModal("circles")}
+              type="button"
             >
               CIRCLES
             </button>
+
             <button
               className="home-circle-button home-circle-button--find"
               onClick={() => setActiveModal("find")}
+              type="button"
             >
               FIND
             </button>
+
             <button
               className="home-circle-button home-circle-button--log"
               onClick={() => setActiveModal("log")}
+              type="button"
             >
               LOG
             </button>
           </div>
 
-          <div className="home-phone__quote">
-            <p>
-              "Recovery is not a race. You don’t have to feel guilty if it takes
-              you longer than you thought it would."
-            </p>
+          {/* Swipeable Updates Carousel */}
+          <div className="home-updates">
+            <div className="home-updates__header">
+              <span className="home-updates__title">Updates</span>
+              <span className="home-updates__hint">Swipe</span>
+            </div>
+
+            <div className="home-updates__rail" aria-label="Updates carousel">
+              {updates.map((u, idx) => (
+                <article
+                  key={`${u.type}-${u.id}-${idx}`}
+                  className={`home-update-card home-update-card--${u.type}`}
+                >
+                  <div className="home-update-card__top">
+                    <span className="home-update-card__pill">{u.title}</span>
+                    <span className="home-update-card__meta">{u.meta}</span>
+                  </div>
+
+                  <p className="home-update-card__body">{u.body}</p>
+
+                  {u.type === "today" && Array.isArray(u.highlights) ? (
+                    <div className="home-update-card__highlights">
+                      {u.highlights.map((h, i) => (
+                        <div className="home-highlight" key={i}>
+                          <span
+                            className="home-highlight__icon"
+                            aria-hidden="true"
+                          >
+                            {h.icon}
+                          </span>
+                          <span className="home-highlight__text">{h.text}</span>
+                        </div>
+                      ))}
+                    </div>
+                  ) : null}
+
+                  <div className="home-update-card__actions">
+                    <button
+                      className="btn-ghost"
+                      type="button"
+                      onClick={() => navigate(`/updates/${u.id}/`)}
+                    >
+                      See more
+                    </button>
+                  </div>
+                </article>
+              ))}
+            </div>
           </div>
         </div>
       </div>
