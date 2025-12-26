@@ -3,16 +3,37 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigation, useSosToggle } from "./navigation";
 import BottomNav, { SOSOverlay } from "./BottomNav";
 
+function clamp(n, min, max) {
+  return Math.max(min, Math.min(max, n));
+}
+
 function Home({ username, isAuthenticated, sobrietyDays = 45 }) {
   const { navigate } = useNavigation();
   const [activeModal, setActiveModal] = useState(null);
   const [sosOpen, setSosOpen] = useSosToggle();
 
-  // Carousel paging state (dots + click-to-jump)
+  // Stacked updates state
   const [activeUpdateIndex, setActiveUpdateIndex] = useState(0);
-  const railRef = useRef(null);
-  const rafRef = useRef(null);
-  const cardRefs = useRef([]);
+
+  // Drag state (top card only)
+  const drag = useRef({
+    isDown: false,
+    pointerId: null,
+    startX: 0,
+    startY: 0,
+    dx: 0,
+    dy: 0,
+    axisLocked: false,
+    lockAxis: null, // "x" | "y"
+  });
+
+  const [dragStyle, setDragStyle] = useState({
+    x: 0,
+    y: 0,
+    rot: 0,
+    opacity: 1,
+    isAnimating: false,
+  });
 
   const handleBackdropClick = () => setActiveModal(null);
 
@@ -21,9 +42,7 @@ function Home({ username, isAuthenticated, sobrietyDays = 45 }) {
     setActiveModal(null);
   };
 
-  // Updates feed:
-  // - First card is "Today summary" (appointment + reminder + circle highlight)
-  // - Each card has "See more" -> /updates/<id>/
+  // Updates feed (generic placeholders for now)
   const updates = useMemo(
     () => [
       {
@@ -71,58 +90,130 @@ function Home({ username, isAuthenticated, sobrietyDays = 45 }) {
     []
   );
 
-  const computeActiveIndex = () => {
-    const rail = railRef.current;
-    if (!rail) return;
+  const maxIndex = updates.length - 1;
 
-    const cards = cardRefs.current.filter(Boolean);
-    if (!cards.length) return;
+  const resetTopCard = (animate = true) => {
+    setDragStyle({ x: 0, y: 0, rot: 0, opacity: 1, isAnimating: animate });
+    if (animate) {
+      window.setTimeout(() => {
+        setDragStyle((s) => ({ ...s, isAnimating: false }));
+      }, 220);
+    } else {
+      setDragStyle((s) => ({ ...s, isAnimating: false }));
+    }
+  };
 
-    const railCenter = rail.scrollLeft + rail.clientWidth / 2;
+  const goNext = () => {
+    setActiveUpdateIndex((i) => clamp(i + 1, 0, maxIndex));
+    resetTopCard(false);
+  };
 
-    let bestIdx = 0;
-    let bestDist = Number.POSITIVE_INFINITY;
+  const goPrev = () => {
+    setActiveUpdateIndex((i) => clamp(i - 1, 0, maxIndex));
+    resetTopCard(false);
+  };
 
-    for (let i = 0; i < cards.length; i += 1) {
-      const el = cards[i];
-      const cardCenter = el.offsetLeft + el.offsetWidth / 2;
-      const dist = Math.abs(cardCenter - railCenter);
-      if (dist < bestDist) {
-        bestDist = dist;
-        bestIdx = i;
+  const jumpTo = (idx) => {
+    setActiveUpdateIndex(clamp(idx, 0, maxIndex));
+    resetTopCard(false);
+  };
+
+  // Pointer handlers for the top stacked card
+  const onPointerDown = (e) => {
+    // Only left click / primary pointer
+    if (e.button != null && e.button !== 0) return;
+
+    drag.current.isDown = true;
+    drag.current.pointerId = e.pointerId;
+    drag.current.startX = e.clientX;
+    drag.current.startY = e.clientY;
+    drag.current.dx = 0;
+    drag.current.dy = 0;
+    drag.current.axisLocked = false;
+    drag.current.lockAxis = null;
+
+    setDragStyle((s) => ({ ...s, isAnimating: false }));
+
+    e.currentTarget.setPointerCapture?.(e.pointerId);
+  };
+
+  const onPointerMove = (e) => {
+    if (!drag.current.isDown) return;
+    if (drag.current.pointerId !== e.pointerId) return;
+
+    const dx = e.clientX - drag.current.startX;
+    const dy = e.clientY - drag.current.startY;
+
+    drag.current.dx = dx;
+    drag.current.dy = dy;
+
+    // lock axis to avoid fighting vertical scroll
+    if (!drag.current.axisLocked) {
+      const ax = Math.abs(dx);
+      const ay = Math.abs(dy);
+      if (ax > 8 || ay > 8) {
+        drag.current.axisLocked = true;
+        drag.current.lockAxis = ax >= ay ? "x" : "y";
       }
     }
 
-    setActiveUpdateIndex(bestIdx);
-  };
+    // if user is scrolling vertically, don't drag the card
+    if (drag.current.lockAxis === "y") return;
 
-  const onRailScroll = () => {
-    if (rafRef.current) return;
-    rafRef.current = requestAnimationFrame(() => {
-      rafRef.current = null;
-      computeActiveIndex();
+    const rot = clamp(dx / 20, -10, 10);
+    const fade = clamp(1 - Math.abs(dx) / 520, 0.25, 1);
+
+    setDragStyle({
+      x: dx,
+      y: dy * 0.12,
+      rot,
+      opacity: fade,
+      isAnimating: false,
     });
   };
 
-  const scrollToIndex = (index) => {
-    const rail = railRef.current;
-    const card = cardRefs.current[index];
-    if (!rail || !card) return;
+  const onPointerUp = (e) => {
+    if (!drag.current.isDown) return;
+    if (drag.current.pointerId !== e.pointerId) return;
 
-    const left =
-      card.offsetLeft - (rail.clientWidth / 2 - card.offsetWidth / 2);
+    drag.current.isDown = false;
 
-    rail.scrollTo({ left, behavior: "smooth" });
+    if (drag.current.lockAxis === "y") {
+      resetTopCard(true);
+      return;
+    }
+
+    const dx = drag.current.dx;
+    const absDx = Math.abs(dx);
+    const threshold = 110;
+
+    if (absDx > threshold) {
+      // animate off-screen then reveal next/prev
+      const direction = dx > 0 ? 1 : -1;
+
+      setDragStyle({
+        x: direction * 520,
+        y: 0,
+        rot: direction * 14,
+        opacity: 0,
+        isAnimating: true,
+      });
+
+      window.setTimeout(() => {
+        // right swipe -> previous, left swipe -> next (natural: swipe left advances)
+        if (direction > 0) goPrev();
+        else goNext();
+        resetTopCard(false);
+      }, 180);
+    } else {
+      resetTopCard(true);
+    }
   };
 
   useEffect(() => {
-    computeActiveIndex();
-
-    const onResize = () => computeActiveIndex();
-    window.addEventListener("resize", onResize);
-    return () => window.removeEventListener("resize", onResize);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    // guard if updates length changes
+    setActiveUpdateIndex((i) => clamp(i, 0, updates.length - 1));
+  }, [updates.length]);
 
   const renderModal = () => {
     if (!activeModal) return null;
@@ -170,7 +261,7 @@ function Home({ username, isAuthenticated, sobrietyDays = 45 }) {
 
     return (
       <div className="home-modal__backdrop" onClick={handleBackdropClick}>
-        <div className="home-modal" onClick={(e) => e.stopPropagation()}>
+        <div className="home-modal" onClick={(ev) => ev.stopPropagation()}>
           <button
             className="home-modal__close"
             onClick={() => setActiveModal(null)}
@@ -199,6 +290,13 @@ function Home({ username, isAuthenticated, sobrietyDays = 45 }) {
       </div>
     );
   };
+
+  // Render 3 cards: top + two beneath
+  const visibleCards = [];
+  for (let offset = 0; offset < 3; offset += 1) {
+    const idx = activeUpdateIndex + offset;
+    if (idx <= maxIndex) visibleCards.push(idx);
+  }
 
   return (
     <>
@@ -262,91 +360,140 @@ function Home({ username, isAuthenticated, sobrietyDays = 45 }) {
             </button>
           </div>
 
-          {/* Updates carousel: one centered card + peek, fade edges, paging dots */}
+          {/* Updates: stacked overlay “paper stack” */}
           <div className="home-updates">
             <div className="home-updates__header">
               <span className="home-updates__title">Updates</span>
               <span className="home-updates__hint">Swipe</span>
             </div>
 
-            <div className="home-updates__viewport">
-              <div
-                className="home-updates__rail"
-                ref={railRef}
-                onScroll={onRailScroll}
-                aria-label="Updates carousel"
-                role="list"
-              >
-                {updates.map((u, idx) => (
-                  <article
-                    role="listitem"
-                    key={`${u.type}-${u.id}-${idx}`}
-                    ref={(el) => {
-                      cardRefs.current[idx] = el;
-                    }}
-                    className={`home-update-card home-update-card--${u.type}`}
-                  >
-                    <div className="home-update-card__top">
-                      <span className="home-update-card__pill">{u.title}</span>
-                      <span className="home-update-card__meta">{u.meta}</span>
-                    </div>
+            <div className="home-stack" aria-label="Updates stack" role="list">
+              {visibleCards
+                .slice()
+                .reverse() // bottom first, top last
+                .map((idx) => {
+                  const u = updates[idx];
+                  const isTop = idx === activeUpdateIndex;
 
-                    <p className="home-update-card__body">{u.body}</p>
+                  const depth = idx - activeUpdateIndex; // 0,1,2
+                  const scale = depth === 0 ? 1 : depth === 1 ? 0.975 : 0.955;
+                  const y = depth === 0 ? 0 : depth === 1 ? 10 : 18;
 
-                    {u.type === "today" && Array.isArray(u.highlights) ? (
-                      <div className="home-update-card__highlights">
-                        {u.highlights.map((h, i) => (
-                          <div className="home-highlight" key={i}>
-                            <span
-                              className="home-highlight__icon"
-                              aria-hidden="true"
-                            >
-                              {h.icon}
-                            </span>
-                            <span className="home-highlight__text">
-                              {h.text}
-                            </span>
-                          </div>
-                        ))}
-                      </div>
-                    ) : null}
+                  const transform = isTop
+                    ? `translate3d(${dragStyle.x}px, ${dragStyle.y}px, 0) rotate(${dragStyle.rot}deg)`
+                    : `translate3d(0, ${y}px, 0) scale(${scale})`;
 
-                    <div className="home-update-card__actions">
-                      <button
-                        className="btn-ghost"
-                        type="button"
-                        onClick={() => navigate(`/updates/${u.id}/`)}
-                      >
-                        See more
-                      </button>
-                    </div>
-                  </article>
-                ))}
-              </div>
+                  const className = [
+                    "home-update-card",
+                    `home-update-card--${u.type}`,
+                    "home-update-card--stacked",
+                    isTop ? "is-top" : "",
+                  ]
+                    .filter(Boolean)
+                    .join(" ");
 
-              {/* Paging dots (clickable) */}
-              <div
-                className="home-updates__dots"
-                role="tablist"
-                aria-label="Update pages"
-              >
-                {updates.map((u, i) => {
-                  const isActive = i === activeUpdateIndex;
                   return (
-                    <button
-                      key={`${u.id}-dot`}
-                      type="button"
-                      className={`home-updates__dot ${
-                        isActive ? "is-active" : ""
-                      }`}
-                      onClick={() => scrollToIndex(i)}
-                      aria-label={`Go to update ${i + 1}`}
-                      aria-selected={isActive}
-                      role="tab"
-                    />
+                    <article
+                      key={`${u.id}-${idx}`}
+                      role="listitem"
+                      className={className}
+                      style={{
+                        transform,
+                        opacity: isTop ? dragStyle.opacity : 1,
+                        transition: isTop
+                          ? dragStyle.isAnimating
+                            ? "transform 180ms ease, opacity 180ms ease"
+                            : "none"
+                          : "transform 200ms ease",
+                        zIndex: 10 + (3 - depth),
+                        pointerEvents: isTop ? "auto" : "none",
+                      }}
+                      onPointerDown={isTop ? onPointerDown : undefined}
+                      onPointerMove={isTop ? onPointerMove : undefined}
+                      onPointerUp={isTop ? onPointerUp : undefined}
+                      onPointerCancel={isTop ? onPointerUp : undefined}
+                    >
+                      <div className="home-update-card__top">
+                        <span className="home-update-card__pill">{u.title}</span>
+                        <span className="home-update-card__meta">{u.meta}</span>
+                      </div>
+
+                      <p className="home-update-card__body">{u.body}</p>
+
+                      {u.type === "today" && Array.isArray(u.highlights) ? (
+                        <div className="home-update-card__highlights">
+                          {u.highlights.map((h, i) => (
+                            <div className="home-highlight" key={i}>
+                              <span
+                                className="home-highlight__icon"
+                                aria-hidden="true"
+                              >
+                                {h.icon}
+                              </span>
+                              <span className="home-highlight__text">
+                                {h.text}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      ) : null}
+
+                      <div className="home-update-card__actions">
+                        <button
+                          className="btn-ghost"
+                          type="button"
+                          onClick={() => navigate(`/updates/${u.id}/`)}
+                        >
+                          See more
+                        </button>
+                      </div>
+                    </article>
                   );
                 })}
-              </div>
+            </div>
+
+            {/* Dots */}
+            <div
+              className="home-updates__dots"
+              role="tablist"
+              aria-label="Update pages"
+            >
+              {updates.map((u, i) => {
+                const isActive = i === activeUpdateIndex;
+                return (
+                  <button
+                    key={`${u.id}-dot`}
+                    type="button"
+                    className={`home-updates__dot ${
+                      isActive ? "is-active" : ""
+                    }`}
+                    onClick={() => jumpTo(i)}
+                    aria-label={`Go to update ${i + 1}`}
+                    aria-selected={isActive}
+                    role="tab"
+                  />
+                );
+              })}
+            </div>
+
+            {/* Optional controls (keep or remove) */}
+            <div className="home-stack__controls">
+              <button
+                className="btn-ghost"
+                type="button"
+                onClick={goPrev}
+                disabled={activeUpdateIndex === 0}
+              >
+                ← Prev
+              </button>
+              <button
+                className="btn-ghost"
+                type="button"
+                onClick={goNext}
+                disabled={activeUpdateIndex === maxIndex}
+              >
+                Next →
+              </button>
             </div>
           </div>
         </div>
