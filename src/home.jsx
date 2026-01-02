@@ -3,71 +3,11 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigation, useSosToggle } from "./navigation";
 import BottomNav, { SOSOverlay } from "./BottomNav";
 
-/* ───────────────── Helpers ───────────────── */
 function clamp(n, min, max) {
   return Math.max(min, Math.min(max, n));
 }
 
-function pad2(n) {
-  const v = Math.floor(Math.abs(n));
-  return v < 10 ? `0${v}` : `${v}`;
-}
-
-function startOfLocalDay(d) {
-  return new Date(d.getFullYear(), d.getMonth(), d.getDate());
-}
-
-function daysBetweenLocal(a, b) {
-  const A = startOfLocalDay(a).getTime();
-  const B = startOfLocalDay(b).getTime();
-  return Math.floor((B - A) / (24 * 60 * 60 * 1000));
-}
-
-function secondsUntilNextLocalMidnight(now) {
-  const next = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
-  return Math.max(0, Math.floor((next.getTime() - now.getTime()) / 1000));
-}
-
-function splitSeconds(totalSec) {
-  const s = Math.max(0, Math.floor(totalSec));
-  const days = Math.floor(s / 86400);
-  const rem1 = s - days * 86400;
-  const hours = Math.floor(rem1 / 3600);
-  const rem2 = rem1 - hours * 3600;
-  const mins = Math.floor(rem2 / 60);
-  const secs = rem2 - mins * 60;
-  return { days, hours, mins, secs };
-}
-
-function resolveStartDate({ sobrietyStart, sobrietyDays }) {
-  if (sobrietyStart != null) {
-    const d = new Date(sobrietyStart);
-    if (!Number.isNaN(d.getTime())) return d;
-  }
-  const days = Number.isFinite(sobrietyDays) ? sobrietyDays : 0;
-  const now = new Date();
-  return new Date(now.getTime() - days * 24 * 60 * 60 * 1000);
-}
-
-function dailyIndex(seedDate, listLength) {
-  const d = startOfLocalDay(seedDate);
-  const key = `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`;
-  let hash = 0;
-  for (let i = 0; i < key.length; i += 1) {
-    hash = (hash * 31 + key.charCodeAt(i)) >>> 0;
-  }
-  return listLength ? hash % listLength : 0;
-}
-
-/* ───────────────── Home ───────────────── */
-function Home({
-  username,
-  isAuthenticated,
-  sobrietyDays = 45,
-  // ✅ optional, recommended for accurate clock mode:
-  // e.g. "2024-01-12T09:00:00" (or ISO with timezone)
-  sobrietyStart,
-}) {
+function Home({ username, isAuthenticated, sobrietyDays = 45 }) {
   const { navigate } = useNavigation();
   const [activeModal, setActiveModal] = useState(null);
   const [sosOpen, setSosOpen] = useSosToggle();
@@ -102,113 +42,7 @@ function Home({
     setActiveModal(null);
   };
 
-  /* ───── Dynamic sobriety counter (EXTRACTED + MERGED) ───── */
-  const COUNTER_MODES = useMemo(
-    () => [
-      { id: "days", label: "Days" },
-      { id: "daysHours", label: "Days+Hours" },
-      { id: "clock", label: "Clock" },
-      { id: "nextDay", label: "Next Day" },
-    ],
-    []
-  );
-
-  const startDate = useMemo(
-    () => resolveStartDate({ sobrietyStart, sobrietyDays }),
-    [sobrietyStart, sobrietyDays]
-  );
-
-  const [now, setNow] = useState(() => new Date());
-  const [counterModeIndex, setCounterModeIndex] = useState(2); // default: clock
-
-  useEffect(() => {
-    const t = window.setInterval(() => setNow(new Date()), 1000);
-    return () => window.clearInterval(t);
-  }, []);
-
-  const sobriety = useMemo(() => {
-    const elapsedSec = Math.max(
-      0,
-      Math.floor((now.getTime() - startDate.getTime()) / 1000)
-    );
-    const elapsed = splitSeconds(elapsedSec);
-    const daysLocal = Math.max(0, daysBetweenLocal(startDate, now));
-    const untilNext = splitSeconds(secondsUntilNextLocalMidnight(now));
-    return { elapsedSec, ...elapsed, daysLocal, untilNext };
-  }, [now, startDate]);
-
-  const mode = COUNTER_MODES[counterModeIndex]?.id || "clock";
-
-  const sobrietyDisplay = useMemo(() => {
-    if (mode === "days") {
-      return {
-        main: `${sobriety.daysLocal}`,
-        sub: "days",
-        aria: `${sobriety.daysLocal} days sober`,
-      };
-    }
-
-    if (mode === "daysHours") {
-      return {
-        main: `${sobriety.daysLocal}d ${pad2(sobriety.hours)}h`,
-        sub: "sober",
-        aria: `${sobriety.daysLocal} days and ${sobriety.hours} hours sober`,
-      };
-    }
-
-    if (mode === "nextDay") {
-      const dd = sobriety.daysLocal;
-      const h = pad2(sobriety.untilNext.hours);
-      const m = pad2(sobriety.untilNext.mins);
-      const s = pad2(sobriety.untilNext.secs);
-      return {
-        main: `${h}:${m}:${s}`,
-        sub: `until day ${dd + 1}`,
-        aria: `${h} hours ${m} minutes ${s} seconds until day ${dd + 1}`,
-      };
-    }
-
-    // clock: DD:HH:MM:SS (DD is local-day count)
-    const dd = sobriety.daysLocal;
-    const hh = pad2(sobriety.hours);
-    const mm = pad2(sobriety.mins);
-    const ss = pad2(sobriety.secs);
-    return {
-      main: `${dd}:${hh}:${mm}:${ss}`,
-      sub: "DD:HH:MM:SS",
-      aria: `${dd} days ${hh} hours ${mm} minutes ${ss} seconds sober`,
-    };
-  }, [mode, sobriety]);
-
-  const messages = useMemo(
-    () => [
-      "You showed up today. That counts.",
-      "Small steps, real progress.",
-      "One day at a time — you’re building something strong.",
-      "Your future self is rooting for you.",
-      "Hard days don’t cancel your growth.",
-      "Keep it simple. Keep it moving.",
-      "Recovery is momentum — you’ve got it.",
-      "You’re doing the work. Be proud of that.",
-      "Stay close to what helps you stay well.",
-      "Today is a win if you stay with it.",
-      "You don’t have to do this perfectly — just honestly.",
-      "You’re stronger than the urge.",
-      "Breathe. Reset. Continue.",
-    ],
-    []
-  );
-
-  const dailyMessage = useMemo(() => {
-    const idx = dailyIndex(now, messages.length);
-    return messages[idx] || "Keep going.";
-  }, [now, messages]);
-
-  const cycleCounterMode = () => {
-    setCounterModeIndex((i) => (i + 1) % COUNTER_MODES.length);
-  };
-
-  /* ───── Updates feed (your original file) ───── */
+  // Updates feed (generic placeholders for now)
   const updates = useMemo(
     () => [
       {
@@ -286,6 +120,7 @@ function Home({
 
   // Pointer handlers for the top stacked card
   const onPointerDown = (e) => {
+    // Only left click / primary pointer
     if (e.button != null && e.button !== 0) return;
 
     drag.current.isDown = true;
@@ -365,7 +200,7 @@ function Home({
       });
 
       window.setTimeout(() => {
-        // right swipe -> previous, left swipe -> next
+        // right swipe -> previous, left swipe -> next (natural: swipe left advances)
         if (direction > 0) goPrev();
         else goNext();
         resetTopCard(false);
@@ -387,7 +222,11 @@ function Home({
       find: {
         pills: [
           { label: "Therapist", position: "top", route: "/find/therapist/" },
-          { label: "Sober Living", position: "right", route: "/find/sober-living/" },
+          {
+            label: "Sober Living",
+            position: "right",
+            route: "/find/sober-living/",
+          },
           { label: "Treatment", position: "bottom", route: "/find/treatment/" },
           { label: "Meetings", position: "left", route: "/find/meetings/" },
         ],
@@ -397,7 +236,11 @@ function Home({
         pills: [
           { label: "My Circles", position: "top", route: "/circles/" },
           { label: "Join Circle", position: "right", route: "/circles/join/" },
-          { label: "Create Circle", position: "bottom", route: "/circles/create/" },
+          {
+            label: "Create Circle",
+            position: "bottom",
+            route: "/circles/create/",
+          },
           { label: "Invites", position: "left", route: "/circles/invites/" },
         ],
         centerLabel: "CIRCLES",
@@ -428,7 +271,9 @@ function Home({
           </button>
 
           <div className="home-modal__circle-layout" data-mode={activeModal}>
-            <div className="home-modal__center-circle">{modalData.centerLabel}</div>
+            <div className="home-modal__center-circle">
+              {modalData.centerLabel}
+            </div>
 
             {modalData.pills.map((pill, idx) => (
               <button
@@ -484,51 +329,9 @@ function Home({
             )}
           </header>
 
-          {/* ✅ Dynamic sobriety counter (tap to change mode) */}
-          <div
-            className="home-phone__sobriety"
-            role="button"
-            tabIndex={0}
-            onClick={cycleCounterMode}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" || e.key === " ") cycleCounterMode();
-            }}
-            aria-label={`Sobriety counter. Mode: ${
-              COUNTER_MODES[counterModeIndex]?.label || "Clock"
-            }. ${sobrietyDisplay.aria}. Click to change display.`}
-            style={{ cursor: "pointer" }}
-          >
-            <p className="home-phone__sobriety-label">
-              You've been sober for{" "}
-              <span style={{ fontWeight: 800 }}>
-                {COUNTER_MODES[counterModeIndex]?.label || "Clock"}
-              </span>
-            </p>
-
-            <p className="home-phone__sobriety-value">{sobrietyDisplay.main}</p>
-
-            <p
-              style={{
-                margin: "0.25rem 0 0",
-                fontSize: "0.78rem",
-                fontWeight: 700,
-                color: "#4b5563",
-                letterSpacing: "0.02em",
-              }}
-            >
-              {sobrietyDisplay.sub} • tap to change
-            </p>
-
-            <p
-              style={{
-                margin: "0.6rem 0 0",
-                fontSize: "0.85rem",
-                color: "#111827",
-                fontWeight: 800,
-              }}
-            >
-              {dailyMessage}
-            </p>
+          <div className="home-phone__sobriety">
+            <p className="home-phone__sobriety-label">You've been sober for</p>
+            <p className="home-phone__sobriety-value">{sobrietyDays} days</p>
           </div>
 
           <div className="home-phone__actions">
@@ -621,10 +424,15 @@ function Home({
                         <div className="home-update-card__highlights">
                           {u.highlights.map((h, i) => (
                             <div className="home-highlight" key={i}>
-                              <span className="home-highlight__icon" aria-hidden="true">
+                              <span
+                                className="home-highlight__icon"
+                                aria-hidden="true"
+                              >
                                 {h.icon}
                               </span>
-                              <span className="home-highlight__text">{h.text}</span>
+                              <span className="home-highlight__text">
+                                {h.text}
+                              </span>
                             </div>
                           ))}
                         </div>
@@ -645,14 +453,20 @@ function Home({
             </div>
 
             {/* Dots */}
-            <div className="home-updates__dots" role="tablist" aria-label="Update pages">
+            <div
+              className="home-updates__dots"
+              role="tablist"
+              aria-label="Update pages"
+            >
               {updates.map((u, i) => {
                 const isActive = i === activeUpdateIndex;
                 return (
                   <button
                     key={`${u.id}-dot`}
                     type="button"
-                    className={`home-updates__dot ${isActive ? "is-active" : ""}`}
+                    className={`home-updates__dot ${
+                      isActive ? "is-active" : ""
+                    }`}
                     onClick={() => jumpTo(i)}
                     aria-label={`Go to update ${i + 1}`}
                     aria-selected={isActive}
