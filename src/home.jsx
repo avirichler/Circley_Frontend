@@ -64,11 +64,23 @@ function Home({
   username,
   isAuthenticated,
   sobrietyDays = 45,
-  // recommended: pass real sobriety start datetime from user profile
+  // recommended: real start timestamp from profile
   sobrietyStart, // e.g. "2024-01-12T09:00:00"
 }) {
   const { navigate } = useNavigation();
+
+  // ✅ Restore the original 3-option popups (radial modal)
+  const [activeModal, setActiveModal] = useState(null); // "find" | "circles" | "log" | null
+
+  // SOS overlay
   const [sosOpen, setSosOpen] = useSosToggle();
+
+  const handleBackdropClick = () => setActiveModal(null);
+
+  const handlePillClick = (route) => {
+    if (route) navigate(route);
+    setActiveModal(null);
+  };
 
   /* ───── Dynamic sobriety counter ───── */
   const COUNTER_MODES = useMemo(
@@ -87,7 +99,7 @@ function Home({
   );
 
   const [now, setNow] = useState(() => new Date());
-  const [counterModeIndex, setCounterModeIndex] = useState(2); // default: Clock
+  const [counterModeIndex, setCounterModeIndex] = useState(2); // default clock
 
   useEffect(() => {
     const t = window.setInterval(() => setNow(new Date()), 1000);
@@ -109,7 +121,11 @@ function Home({
 
   const sobrietyDisplay = useMemo(() => {
     if (mode === "days") {
-      return { main: `${sobriety.daysLocal}`, sub: "days", aria: `${sobriety.daysLocal} days sober` };
+      return {
+        main: `${sobriety.daysLocal}`,
+        sub: "days",
+        aria: `${sobriety.daysLocal} days sober`,
+      };
     }
 
     if (mode === "daysHours") {
@@ -132,7 +148,7 @@ function Home({
       };
     }
 
-    // clock: DD:HH:MM:SS
+    // clock: DD:HH:MM:SS (DD is local-day count)
     const dd = sobriety.daysLocal;
     const hh = pad2(sobriety.hours);
     const mm = pad2(sobriety.mins);
@@ -305,7 +321,7 @@ function Home({
       }
     }
 
-    // allow vertical scroll, don’t drag if user intended to scroll
+    // allow vertical scroll; don’t drag if user intended to scroll
     if (drag.current.lockAxis === "y") return;
 
     const rot = clamp(dx / 20, -10, 10);
@@ -367,6 +383,74 @@ function Home({
     if (idx <= maxUpdateIndex) visibleCards.push(idx);
   }
 
+  /* ───── Restored radial popups + correct paths ───── */
+  const renderModal = () => {
+    if (!activeModal) return null;
+
+    const modals = {
+      find: {
+        centerLabel: "FIND",
+        pills: [
+          { label: "Therapist", position: "top", route: "/find/therapist/" },
+          { label: "Sober Living", position: "right", route: "/find/sober-living/" },
+          { label: "Treatment", position: "bottom", route: "/find/treatment/" },
+          { label: "Meetings", position: "left", route: "/find/meetings/" },
+        ],
+      },
+      circles: {
+        centerLabel: "CIRCLES",
+        pills: [
+          { label: "My Circles", position: "top", route: "/circles/" },
+          { label: "Join Circle", position: "right", route: "/circles/join/" },
+          { label: "Create Circle", position: "bottom", route: "/circles/create/" },
+          { label: "Invites", position: "left", route: "/circles/invites/" },
+        ],
+      },
+      log: {
+        centerLabel: "LOG",
+        pills: [
+          { label: "Milestone", position: "top", route: "/log/milestone/" },
+          { label: "Trigger", position: "right", route: "/log/trigger/" },
+          { label: "Goal", position: "bottom", route: "/log/goal/" },
+          { label: "Daily Log", position: "left", route: "/log/" },
+        ],
+      },
+    };
+
+    const modalData = modals[activeModal];
+    if (!modalData) return null;
+
+    return (
+      <div className="home-modal__backdrop" onClick={handleBackdropClick}>
+        <div className="home-modal" onClick={(e) => e.stopPropagation()}>
+          <button
+            className="home-modal__close"
+            onClick={() => setActiveModal(null)}
+            type="button"
+          >
+            Close
+          </button>
+
+          <div className="home-modal__circle-layout" data-mode={activeModal}>
+            <div className="home-modal__center-circle">{modalData.centerLabel}</div>
+
+            {modalData.pills.map((pill, idx) => (
+              <button
+                key={`${pill.position}-${idx}`}
+                className={`home-modal__pill home-modal__pill--${pill.position}`}
+                onClick={() => handlePillClick(pill.route)}
+                type="button"
+              >
+                {pill.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  /* ───────────────── UI ───────────────── */
   return (
     <>
       <div className="home-page">
@@ -445,11 +529,11 @@ function Home({
             </p>
           </div>
 
-          {/* ✅ UPDATED: buttons go directly to proper paths */}
+          {/* ✅ Restored popups: buttons open the radial modal again */}
           <div className="home-phone__actions">
             <button
               className="home-circle-button home-circle-button--circles"
-              onClick={() => navigate("/circles/")}
+              onClick={() => setActiveModal("circles")}
               type="button"
             >
               CIRCLES
@@ -457,7 +541,7 @@ function Home({
 
             <button
               className="home-circle-button home-circle-button--find"
-              onClick={() => navigate("/find/")}
+              onClick={() => setActiveModal("find")}
               type="button"
             >
               FIND
@@ -465,7 +549,7 @@ function Home({
 
             <button
               className="home-circle-button home-circle-button--log"
-              onClick={() => navigate("/log/")}
+              onClick={() => setActiveModal("log")}
               type="button"
             >
               LOG
@@ -600,8 +684,12 @@ function Home({
         </div>
       </div>
 
+      {/* Bottom nav + SOS */}
       <BottomNav active="/" />
       <SOSOverlay isOpen={sosOpen} onClose={() => setSosOpen(false)} />
+
+      {/* ✅ Restored radial modal popups */}
+      {renderModal()}
     </>
   );
 }
