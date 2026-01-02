@@ -3,6 +3,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigation, useSosToggle } from "./navigation";
 import BottomNav, { SOSOverlay } from "./BottomNav";
 
+/* ───────────────── Helpers ───────────────── */
 function clamp(n, min, max) {
   return Math.max(min, Math.min(max, n));
 }
@@ -12,28 +13,11 @@ function pad2(n) {
   return v < 10 ? `0${v}` : `${v}`;
 }
 
-// Accepts:
-// - sobrietyStart: Date | string | number (recommended)
-// - sobrietyDays fallback (legacy)
-// Returns start Date
-function resolveStartDate({ sobrietyStart, sobrietyDays }) {
-  if (sobrietyStart != null) {
-    const d = new Date(sobrietyStart);
-    if (!Number.isNaN(d.getTime())) return d;
-  }
-
-  // fallback: approximate start = now - sobrietyDays
-  const days = Number.isFinite(sobrietyDays) ? sobrietyDays : 0;
-  const now = new Date();
-  return new Date(now.getTime() - days * 24 * 60 * 60 * 1000);
-}
-
 function startOfLocalDay(d) {
   return new Date(d.getFullYear(), d.getMonth(), d.getDate());
 }
 
 function daysBetweenLocal(a, b) {
-  // difference in local-midnight days
   const A = startOfLocalDay(a).getTime();
   const B = startOfLocalDay(b).getTime();
   return Math.floor((B - A) / (24 * 60 * 60 * 1000));
@@ -55,7 +39,16 @@ function splitSeconds(totalSec) {
   return { days, hours, mins, secs };
 }
 
-// deterministic "message of the day" index
+function resolveStartDate({ sobrietyStart, sobrietyDays }) {
+  if (sobrietyStart != null) {
+    const d = new Date(sobrietyStart);
+    if (!Number.isNaN(d.getTime())) return d;
+  }
+  const days = Number.isFinite(sobrietyDays) ? sobrietyDays : 0;
+  const now = new Date();
+  return new Date(now.getTime() - days * 24 * 60 * 60 * 1000);
+}
+
 function dailyIndex(seedDate, listLength) {
   const d = startOfLocalDay(seedDate);
   const key = `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`;
@@ -66,23 +59,18 @@ function dailyIndex(seedDate, listLength) {
   return listLength ? hash % listLength : 0;
 }
 
+/* ───────────────── Home ───────────────── */
 function Home({
   username,
   isAuthenticated,
   sobrietyDays = 45,
-  // NEW (recommended): pass an actual start date/time from user profile
+  // recommended: pass real sobriety start datetime from user profile
   sobrietyStart, // e.g. "2024-01-12T09:00:00"
 }) {
   const { navigate } = useNavigation();
-  const [activeModal, setActiveModal] = useState(null);
   const [sosOpen, setSosOpen] = useSosToggle();
 
-  // --- Sobriety Counter ---
-  // modes:
-  // 0: Days
-  // 1: Days + Hours
-  // 2: Clock (DD:HH:MM:SS)
-  // 3: Time to next day (countdown)
+  /* ───── Dynamic sobriety counter ───── */
   const COUNTER_MODES = useMemo(
     () => [
       { id: "days", label: "Days" },
@@ -99,7 +87,7 @@ function Home({
   );
 
   const [now, setNow] = useState(() => new Date());
-  const [counterModeIndex, setCounterModeIndex] = useState(2); // default to Clock
+  const [counterModeIndex, setCounterModeIndex] = useState(2); // default: Clock
 
   useEffect(() => {
     const t = window.setInterval(() => setNow(new Date()), 1000);
@@ -107,32 +95,21 @@ function Home({
   }, []);
 
   const sobriety = useMemo(() => {
-    const elapsedSec = Math.max(0, Math.floor((now.getTime() - startDate.getTime()) / 1000));
-    const { days, hours, mins, secs } = splitSeconds(elapsedSec);
-
+    const elapsedSec = Math.max(
+      0,
+      Math.floor((now.getTime() - startDate.getTime()) / 1000)
+    );
+    const elapsed = splitSeconds(elapsedSec);
     const daysLocal = Math.max(0, daysBetweenLocal(startDate, now));
     const untilNext = splitSeconds(secondsUntilNextLocalMidnight(now));
-
-    return {
-      elapsedSec,
-      days,
-      hours,
-      mins,
-      secs,
-      daysLocal,
-      untilNext,
-    };
+    return { elapsedSec, ...elapsed, daysLocal, untilNext };
   }, [now, startDate]);
 
   const mode = COUNTER_MODES[counterModeIndex]?.id || "clock";
 
   const sobrietyDisplay = useMemo(() => {
     if (mode === "days") {
-      return {
-        main: `${sobriety.daysLocal}`,
-        sub: "days",
-        aria: `${sobriety.daysLocal} days sober`,
-      };
+      return { main: `${sobriety.daysLocal}`, sub: "days", aria: `${sobriety.daysLocal} days sober` };
     }
 
     if (mode === "daysHours") {
@@ -144,7 +121,6 @@ function Home({
     }
 
     if (mode === "nextDay") {
-      // countdown until next day tick
       const dd = sobriety.daysLocal;
       const h = pad2(sobriety.untilNext.hours);
       const m = pad2(sobriety.untilNext.mins);
@@ -156,7 +132,7 @@ function Home({
       };
     }
 
-    // clock (default): DD:HH:MM:SS
+    // clock: DD:HH:MM:SS
     const dd = sobriety.daysLocal;
     const hh = pad2(sobriety.hours);
     const mm = pad2(sobriety.mins);
@@ -196,9 +172,10 @@ function Home({
     setCounterModeIndex((i) => (i + 1) % COUNTER_MODES.length);
   };
 
-  // --- Updates stack (your current “paper stack” implementation) ---
+  /* ───── Updates: stacked “paper” cards ───── */
   const [activeUpdateIndex, setActiveUpdateIndex] = useState(0);
 
+  // Drag state (top card only)
   const drag = useRef({
     isDown: false,
     pointerId: null,
@@ -224,7 +201,7 @@ function Home({
         id: "today",
         type: "today",
         title: "Today summary",
-        meta: "Dec 25 • 3 highlights",
+        meta: "3 highlights",
         body: "One step at a time — here’s what’s up next.",
         highlights: [
           { icon: "📅", text: "Therapy • 6:30 PM • Telehealth" },
@@ -265,7 +242,7 @@ function Home({
     []
   );
 
-  const maxIndex = updates.length - 1;
+  const maxUpdateIndex = updates.length - 1;
 
   const resetTopCard = (animate = true) => {
     setDragStyle({ x: 0, y: 0, rot: 0, opacity: 1, isAnimating: animate });
@@ -278,18 +255,18 @@ function Home({
     }
   };
 
-  const goNext = () => {
-    setActiveUpdateIndex((i) => clamp(i + 1, 0, maxIndex));
+  const goNextUpdate = () => {
+    setActiveUpdateIndex((i) => clamp(i + 1, 0, maxUpdateIndex));
     resetTopCard(false);
   };
 
-  const goPrev = () => {
-    setActiveUpdateIndex((i) => clamp(i - 1, 0, maxIndex));
+  const goPrevUpdate = () => {
+    setActiveUpdateIndex((i) => clamp(i - 1, 0, maxUpdateIndex));
     resetTopCard(false);
   };
 
   const jumpToUpdate = (idx) => {
-    setActiveUpdateIndex(clamp(idx, 0, maxIndex));
+    setActiveUpdateIndex(clamp(idx, 0, maxUpdateIndex));
     resetTopCard(false);
   };
 
@@ -328,6 +305,7 @@ function Home({
       }
     }
 
+    // allow vertical scroll, don’t drag if user intended to scroll
     if (drag.current.lockAxis === "y") return;
 
     const rot = clamp(dx / 20, -10, 10);
@@ -369,8 +347,9 @@ function Home({
       });
 
       window.setTimeout(() => {
-        if (direction > 0) goPrev();
-        else goNext();
+        // right swipe -> previous, left swipe -> next
+        if (direction > 0) goPrevUpdate();
+        else goNextUpdate();
         resetTopCard(false);
       }, 180);
     } else {
@@ -382,78 +361,10 @@ function Home({
     setActiveUpdateIndex((i) => clamp(i, 0, updates.length - 1));
   }, [updates.length]);
 
-  // Modal renderer (unchanged)
-  const renderModal = () => {
-    if (!activeModal) return null;
-
-    const modals = {
-      find: {
-        pills: [
-          { label: "Therapist", position: "top", route: "/find/therapist/" },
-          { label: "Sober Living", position: "right", route: "/find/sober-living/" },
-          { label: "Treatment", position: "bottom", route: "/find/treatment/" },
-          { label: "Meetings", position: "left", route: "/find/meetings/" },
-        ],
-        centerLabel: "FIND",
-      },
-      circles: {
-        pills: [
-          { label: "My Circles", position: "top", route: "/circles/" },
-          { label: "Join Circle", position: "right", route: "/circles/join/" },
-          { label: "Create Circle", position: "bottom", route: "/circles/create/" },
-          { label: "Invites", position: "left", route: "/circles/invites/" },
-        ],
-        centerLabel: "CIRCLES",
-      },
-      log: {
-        pills: [
-          { label: "Milestone", position: "top", route: "/log/milestone/" },
-          { label: "Trigger", position: "right", route: "/log/trigger/" },
-          { label: "Goal", position: "bottom", route: "/log/goal/" },
-          { label: "Daily Log", position: "left", route: "/log/" },
-        ],
-        centerLabel: "LOG",
-      },
-    };
-
-    const modalData = modals[activeModal];
-    if (!modalData) return null;
-
-    return (
-      <div className="home-modal__backdrop" onClick={handleBackdropClick}>
-        <div className="home-modal" onClick={(ev) => ev.stopPropagation()}>
-          <button
-            className="home-modal__close"
-            onClick={() => setActiveModal(null)}
-            type="button"
-          >
-            Close
-          </button>
-
-          <div className="home-modal__circle-layout" data-mode={activeModal}>
-            <div className="home-modal__center-circle">{modalData.centerLabel}</div>
-
-            {modalData.pills.map((pill, idx) => (
-              <button
-                key={`${pill.position}-${idx}`}
-                className={`home-modal__pill home-modal__pill--${pill.position}`}
-                onClick={() => handlePillClick(pill.route)}
-                type="button"
-              >
-                {pill.label}
-              </button>
-            ))}
-          </div>
-        </div>
-      </div>
-    );
-  };
-
-  // Show 3 cards in the stack: top + two under
   const visibleCards = [];
   for (let offset = 0; offset < 3; offset += 1) {
     const idx = activeUpdateIndex + offset;
-    if (idx <= maxIndex) visibleCards.push(idx);
+    if (idx <= maxUpdateIndex) visibleCards.push(idx);
   }
 
   return (
@@ -487,7 +398,7 @@ function Home({
             )}
           </header>
 
-          {/* Dynamic sobriety counter */}
+          {/* Dynamic sobriety counter (tap to change mode) */}
           <div
             className="home-phone__sobriety"
             role="button"
@@ -534,10 +445,11 @@ function Home({
             </p>
           </div>
 
+          {/* ✅ UPDATED: buttons go directly to proper paths */}
           <div className="home-phone__actions">
             <button
               className="home-circle-button home-circle-button--circles"
-              onClick={() => setActiveModal("circles")}
+              onClick={() => navigate("/circles/")}
               type="button"
             >
               CIRCLES
@@ -545,7 +457,7 @@ function Home({
 
             <button
               className="home-circle-button home-circle-button--find"
-              onClick={() => setActiveModal("find")}
+              onClick={() => navigate("/find/")}
               type="button"
             >
               FIND
@@ -553,7 +465,7 @@ function Home({
 
             <button
               className="home-circle-button home-circle-button--log"
-              onClick={() => setActiveModal("log")}
+              onClick={() => navigate("/log/")}
               type="button"
             >
               LOG
@@ -624,15 +536,10 @@ function Home({
                         <div className="home-update-card__highlights">
                           {u.highlights.map((h, i) => (
                             <div className="home-highlight" key={i}>
-                              <span
-                                className="home-highlight__icon"
-                                aria-hidden="true"
-                              >
+                              <span className="home-highlight__icon" aria-hidden="true">
                                 {h.icon}
                               </span>
-                              <span className="home-highlight__text">
-                                {h.text}
-                              </span>
+                              <span className="home-highlight__text">{h.text}</span>
                             </div>
                           ))}
                         </div>
@@ -653,20 +560,14 @@ function Home({
             </div>
 
             {/* Dots */}
-            <div
-              className="home-updates__dots"
-              role="tablist"
-              aria-label="Update pages"
-            >
+            <div className="home-updates__dots" role="tablist" aria-label="Update pages">
               {updates.map((u, i) => {
                 const isActive = i === activeUpdateIndex;
                 return (
                   <button
                     key={`${u.id}-dot`}
                     type="button"
-                    className={`home-updates__dot ${
-                      isActive ? "is-active" : ""
-                    }`}
+                    className={`home-updates__dot ${isActive ? "is-active" : ""}`}
                     onClick={() => jumpToUpdate(i)}
                     aria-label={`Go to update ${i + 1}`}
                     aria-selected={isActive}
@@ -681,7 +582,7 @@ function Home({
               <button
                 className="btn-ghost"
                 type="button"
-                onClick={goPrev}
+                onClick={goPrevUpdate}
                 disabled={activeUpdateIndex === 0}
               >
                 ← Prev
@@ -689,8 +590,8 @@ function Home({
               <button
                 className="btn-ghost"
                 type="button"
-                onClick={goNext}
-                disabled={activeUpdateIndex === maxIndex}
+                onClick={goNextUpdate}
+                disabled={activeUpdateIndex === maxUpdateIndex}
               >
                 Next →
               </button>
@@ -701,7 +602,6 @@ function Home({
 
       <BottomNav active="/" />
       <SOSOverlay isOpen={sosOpen} onClose={() => setSosOpen(false)} />
-      {renderModal()}
     </>
   );
 }
