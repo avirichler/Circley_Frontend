@@ -99,6 +99,20 @@
   text-align: center;
 }
 
+/* ✅ Optional affordance when the sobriety card is interactive (tap-to-change) */
+.home-phone__sobriety[role="button"] {
+  cursor: pointer;
+}
+
+.home-phone__sobriety[role="button"]:hover {
+  box-shadow: 0 14px 26px rgba(15, 23, 42, 0.11);
+}
+
+.home-phone__sobriety[role="button"]:focus-visible {
+  outline: 2px solid rgba(37, 99, 235, 0.55);
+  outline-offset: 3px;
+}
+
 .home-phone__sobriety-label {
   margin: 0;
   font-size: 0.9rem;
@@ -111,6 +125,23 @@
   font-size: 1.7rem;
   font-weight: 800;
   color: #059669;
+}
+
+/* ✅ Moved from inline JSX (the “sub label” line) */
+.home-phone__sobriety-sub {
+  margin: 0.25rem 0 0;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #4b5563;
+  letter-spacing: 0.02em;
+}
+
+/* ✅ Moved from inline JSX (daily message beneath counter) */
+.home-phone__encouragement {
+  margin: 0.6rem 0 0;
+  font-size: 0.85rem;
+  color: #111827;
+  font-weight: 800;
 }
 
 .home-phone__actions {
@@ -417,6 +448,10 @@
 .home-modal__circle-layout[data-mode="log"] .home-modal__center-circle {
   background: #8b5cf6;
 }
+
+/* ── Updates (Stacked overlay “paper” stack) ─────────────────────── */
+/* (rest of your file remains unchanged from here down) */
+
 
 /* ── Updates (Stacked overlay “paper” stack) ─────────────────────── */
 
