@@ -64,16 +64,36 @@ function Home({
   username,
   isAuthenticated,
   sobrietyDays = 45,
-  // recommended: real start timestamp from profile
-  sobrietyStart, // e.g. "2024-01-12T09:00:00"
+  // ✅ optional, recommended for accurate clock mode:
+  // e.g. "2024-01-12T09:00:00" (or ISO with timezone)
+  sobrietyStart,
 }) {
   const { navigate } = useNavigation();
-
-  // ✅ Restore the original 3-option popups (radial modal)
-  const [activeModal, setActiveModal] = useState(null); // "find" | "circles" | "log" | null
-
-  // SOS overlay
+  const [activeModal, setActiveModal] = useState(null);
   const [sosOpen, setSosOpen] = useSosToggle();
+
+  // Stacked updates state
+  const [activeUpdateIndex, setActiveUpdateIndex] = useState(0);
+
+  // Drag state (top card only)
+  const drag = useRef({
+    isDown: false,
+    pointerId: null,
+    startX: 0,
+    startY: 0,
+    dx: 0,
+    dy: 0,
+    axisLocked: false,
+    lockAxis: null, // "x" | "y"
+  });
+
+  const [dragStyle, setDragStyle] = useState({
+    x: 0,
+    y: 0,
+    rot: 0,
+    opacity: 1,
+    isAnimating: false,
+  });
 
   const handleBackdropClick = () => setActiveModal(null);
 
@@ -82,7 +102,7 @@ function Home({
     setActiveModal(null);
   };
 
-  /* ───── Dynamic sobriety counter ───── */
+  /* ───── Dynamic sobriety counter (EXTRACTED + MERGED) ───── */
   const COUNTER_MODES = useMemo(
     () => [
       { id: "days", label: "Days" },
@@ -99,7 +119,7 @@ function Home({
   );
 
   const [now, setNow] = useState(() => new Date());
-  const [counterModeIndex, setCounterModeIndex] = useState(2); // default clock
+  const [counterModeIndex, setCounterModeIndex] = useState(2); // default: clock
 
   useEffect(() => {
     const t = window.setInterval(() => setNow(new Date()), 1000);
@@ -188,36 +208,14 @@ function Home({
     setCounterModeIndex((i) => (i + 1) % COUNTER_MODES.length);
   };
 
-  /* ───── Updates: stacked “paper” cards ───── */
-  const [activeUpdateIndex, setActiveUpdateIndex] = useState(0);
-
-  // Drag state (top card only)
-  const drag = useRef({
-    isDown: false,
-    pointerId: null,
-    startX: 0,
-    startY: 0,
-    dx: 0,
-    dy: 0,
-    axisLocked: false,
-    lockAxis: null, // "x" | "y"
-  });
-
-  const [dragStyle, setDragStyle] = useState({
-    x: 0,
-    y: 0,
-    rot: 0,
-    opacity: 1,
-    isAnimating: false,
-  });
-
+  /* ───── Updates feed (your original file) ───── */
   const updates = useMemo(
     () => [
       {
         id: "today",
         type: "today",
         title: "Today summary",
-        meta: "3 highlights",
+        meta: "Dec 25 • 3 highlights",
         body: "One step at a time — here’s what’s up next.",
         highlights: [
           { icon: "📅", text: "Therapy • 6:30 PM • Telehealth" },
@@ -258,7 +256,7 @@ function Home({
     []
   );
 
-  const maxUpdateIndex = updates.length - 1;
+  const maxIndex = updates.length - 1;
 
   const resetTopCard = (animate = true) => {
     setDragStyle({ x: 0, y: 0, rot: 0, opacity: 1, isAnimating: animate });
@@ -271,21 +269,22 @@ function Home({
     }
   };
 
-  const goNextUpdate = () => {
-    setActiveUpdateIndex((i) => clamp(i + 1, 0, maxUpdateIndex));
+  const goNext = () => {
+    setActiveUpdateIndex((i) => clamp(i + 1, 0, maxIndex));
     resetTopCard(false);
   };
 
-  const goPrevUpdate = () => {
-    setActiveUpdateIndex((i) => clamp(i - 1, 0, maxUpdateIndex));
+  const goPrev = () => {
+    setActiveUpdateIndex((i) => clamp(i - 1, 0, maxIndex));
     resetTopCard(false);
   };
 
-  const jumpToUpdate = (idx) => {
-    setActiveUpdateIndex(clamp(idx, 0, maxUpdateIndex));
+  const jumpTo = (idx) => {
+    setActiveUpdateIndex(clamp(idx, 0, maxIndex));
     resetTopCard(false);
   };
 
+  // Pointer handlers for the top stacked card
   const onPointerDown = (e) => {
     if (e.button != null && e.button !== 0) return;
 
@@ -299,6 +298,7 @@ function Home({
     drag.current.lockAxis = null;
 
     setDragStyle((s) => ({ ...s, isAnimating: false }));
+
     e.currentTarget.setPointerCapture?.(e.pointerId);
   };
 
@@ -312,6 +312,7 @@ function Home({
     drag.current.dx = dx;
     drag.current.dy = dy;
 
+    // lock axis to avoid fighting vertical scroll
     if (!drag.current.axisLocked) {
       const ax = Math.abs(dx);
       const ay = Math.abs(dy);
@@ -321,7 +322,7 @@ function Home({
       }
     }
 
-    // allow vertical scroll; don’t drag if user intended to scroll
+    // if user is scrolling vertically, don't drag the card
     if (drag.current.lockAxis === "y") return;
 
     const rot = clamp(dx / 20, -10, 10);
@@ -352,6 +353,7 @@ function Home({
     const threshold = 110;
 
     if (absDx > threshold) {
+      // animate off-screen then reveal next/prev
       const direction = dx > 0 ? 1 : -1;
 
       setDragStyle({
@@ -364,8 +366,8 @@ function Home({
 
       window.setTimeout(() => {
         // right swipe -> previous, left swipe -> next
-        if (direction > 0) goPrevUpdate();
-        else goNextUpdate();
+        if (direction > 0) goPrev();
+        else goNext();
         resetTopCard(false);
       }, 180);
     } else {
@@ -374,46 +376,40 @@ function Home({
   };
 
   useEffect(() => {
+    // guard if updates length changes
     setActiveUpdateIndex((i) => clamp(i, 0, updates.length - 1));
   }, [updates.length]);
 
-  const visibleCards = [];
-  for (let offset = 0; offset < 3; offset += 1) {
-    const idx = activeUpdateIndex + offset;
-    if (idx <= maxUpdateIndex) visibleCards.push(idx);
-  }
-
-  /* ───── Restored radial popups + correct paths ───── */
   const renderModal = () => {
     if (!activeModal) return null;
 
     const modals = {
       find: {
-        centerLabel: "FIND",
         pills: [
           { label: "Therapist", position: "top", route: "/find/therapist/" },
           { label: "Sober Living", position: "right", route: "/find/sober-living/" },
           { label: "Treatment", position: "bottom", route: "/find/treatment/" },
           { label: "Meetings", position: "left", route: "/find/meetings/" },
         ],
+        centerLabel: "FIND",
       },
       circles: {
-        centerLabel: "CIRCLES",
         pills: [
           { label: "My Circles", position: "top", route: "/circles/" },
           { label: "Join Circle", position: "right", route: "/circles/join/" },
           { label: "Create Circle", position: "bottom", route: "/circles/create/" },
           { label: "Invites", position: "left", route: "/circles/invites/" },
         ],
+        centerLabel: "CIRCLES",
       },
       log: {
-        centerLabel: "LOG",
         pills: [
           { label: "Milestone", position: "top", route: "/log/milestone/" },
           { label: "Trigger", position: "right", route: "/log/trigger/" },
           { label: "Goal", position: "bottom", route: "/log/goal/" },
           { label: "Daily Log", position: "left", route: "/log/" },
         ],
+        centerLabel: "LOG",
       },
     };
 
@@ -422,7 +418,7 @@ function Home({
 
     return (
       <div className="home-modal__backdrop" onClick={handleBackdropClick}>
-        <div className="home-modal" onClick={(e) => e.stopPropagation()}>
+        <div className="home-modal" onClick={(ev) => ev.stopPropagation()}>
           <button
             className="home-modal__close"
             onClick={() => setActiveModal(null)}
@@ -450,7 +446,13 @@ function Home({
     );
   };
 
-  /* ───────────────── UI ───────────────── */
+  // Render 3 cards: top + two beneath
+  const visibleCards = [];
+  for (let offset = 0; offset < 3; offset += 1) {
+    const idx = activeUpdateIndex + offset;
+    if (idx <= maxIndex) visibleCards.push(idx);
+  }
+
   return (
     <>
       <div className="home-page">
@@ -482,7 +484,7 @@ function Home({
             )}
           </header>
 
-          {/* Dynamic sobriety counter (tap to change mode) */}
+          {/* ✅ Dynamic sobriety counter (tap to change mode) */}
           <div
             className="home-phone__sobriety"
             role="button"
@@ -529,7 +531,6 @@ function Home({
             </p>
           </div>
 
-          {/* ✅ Restored popups: buttons open the radial modal again */}
           <div className="home-phone__actions">
             <button
               className="home-circle-button home-circle-button--circles"
@@ -566,7 +567,7 @@ function Home({
             <div className="home-stack" aria-label="Updates stack" role="list">
               {visibleCards
                 .slice()
-                .reverse()
+                .reverse() // bottom first, top last
                 .map((idx) => {
                   const u = updates[idx];
                   const isTop = idx === activeUpdateIndex;
@@ -652,7 +653,7 @@ function Home({
                     key={`${u.id}-dot`}
                     type="button"
                     className={`home-updates__dot ${isActive ? "is-active" : ""}`}
-                    onClick={() => jumpToUpdate(i)}
+                    onClick={() => jumpTo(i)}
                     aria-label={`Go to update ${i + 1}`}
                     aria-selected={isActive}
                     role="tab"
@@ -666,7 +667,7 @@ function Home({
               <button
                 className="btn-ghost"
                 type="button"
-                onClick={goPrevUpdate}
+                onClick={goPrev}
                 disabled={activeUpdateIndex === 0}
               >
                 ← Prev
@@ -674,8 +675,8 @@ function Home({
               <button
                 className="btn-ghost"
                 type="button"
-                onClick={goNextUpdate}
-                disabled={activeUpdateIndex === maxUpdateIndex}
+                onClick={goNext}
+                disabled={activeUpdateIndex === maxIndex}
               >
                 Next →
               </button>
@@ -684,11 +685,8 @@ function Home({
         </div>
       </div>
 
-      {/* Bottom nav + SOS */}
       <BottomNav active="/" />
       <SOSOverlay isOpen={sosOpen} onClose={() => setSosOpen(false)} />
-
-      {/* ✅ Restored radial modal popups */}
       {renderModal()}
     </>
   );
