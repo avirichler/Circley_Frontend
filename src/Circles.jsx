@@ -4,10 +4,6 @@ import { useSosToggle } from "./navigation";
 import BottomNav, { SOSOverlay } from "./BottomNav";
 import CardStack from "./CardStack";
 
-// ✅ Place the uploaded icon here in your project:
-// src/assets/CirkelyBellLogo.png
-import NewMsgIcon from "./assets/CirkelyBellLogo.png";
-
 export default function Circles() {
   const [sosOpen, setSosOpen] = useSosToggle();
 
@@ -267,33 +263,19 @@ export default function Circles() {
       <span
         aria-label={hasUnread ? `${count} new messages` : "No new messages"}
         title={hasUnread ? `${count} new messages` : "No new messages"}
-        style={{ display: "inline-flex", alignItems: "center", gap: "0.35rem", flex: "0 0 auto" }}
+        style={{
+          fontSize: "0.7rem",
+          fontWeight: 800,
+          background: hasUnread ? "#111827" : "#e5e7eb",
+          color: hasUnread ? "#ffffff" : "#6b7280",
+          padding: "0.15rem 0.45rem",
+          borderRadius: "999px",
+          lineHeight: 1.1,
+          minWidth: "2.05rem",
+          textAlign: "center",
+        }}
       >
-        <img
-          src={NewMsgIcon}
-          alt="New messages"
-          style={{
-            width: 18,
-            height: 18,
-            opacity: hasUnread ? 1 : 0.35,
-            filter: hasUnread ? "none" : "grayscale(100%)",
-          }}
-        />
-        <span
-          style={{
-            fontSize: "0.7rem",
-            fontWeight: 800,
-            background: hasUnread ? "#111827" : "#e5e7eb",
-            color: hasUnread ? "#ffffff" : "#6b7280",
-            padding: "0.15rem 0.45rem",
-            borderRadius: "999px",
-            lineHeight: 1.1,
-            minWidth: "2.05rem",
-            textAlign: "center",
-          }}
-        >
-          {hasUnread ? (count > 99 ? "99+" : count) : "0"}
-        </span>
+        {hasUnread ? (count > 99 ? "99+" : count) : "0"}
       </span>
     );
   };
@@ -366,7 +348,7 @@ export default function Circles() {
                   // placeholder: mute / notifications settings
                 }}
               >
-                <img src={NewMsgIcon} alt="" style={{ width: 18, height: 18 }} />
+                🔔
               </button>
             </header>
 
