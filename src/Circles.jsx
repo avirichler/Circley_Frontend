@@ -1,11 +1,12 @@
 // src/Circles.jsx
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import { useSosToggle } from "./navigation";
 import BottomNav, { SOSOverlay } from "./BottomNav";
 import CardStack from "./CardStack";
 
 export default function Circles() {
   const [sosOpen, setSosOpen] = useSosToggle();
+
   const [circles, setCircles] = useState([
     {
       id: 1,
@@ -13,6 +14,7 @@ export default function Circles() {
       description: "Share tips, vent, and support each other through toddler chaos.",
       visibility: "public",
       members: 42,
+      isMember: false,
     },
     {
       id: 2,
@@ -20,14 +22,20 @@ export default function Circles() {
       description: "Practice CBT skills together with weekly check-ins and prompts.",
       visibility: "private",
       members: 18,
+      isMember: false,
     },
   ]);
 
+  // Create form state
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [visibility, setVisibility] = useState("public");
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+
+  // Explore controls
+  const [query, setQuery] = useState("");
+  const [filterVisibility, setFilterVisibility] = useState("all"); // all | public | private
 
   const handleCreateCircle = (event) => {
     event.preventDefault();
@@ -45,6 +53,7 @@ export default function Circles() {
       description: description.trim(),
       visibility,
       members: 1,
+      isMember: true, // creator is a member
     };
 
     setCircles((prev) => [newCircle, ...prev]);
@@ -53,8 +62,36 @@ export default function Circles() {
     setVisibility("public");
     setSuccess("Circle created successfully!");
 
-    setTimeout(() => setSuccess(""), 3000);
+    window.setTimeout(() => setSuccess(""), 3000);
   };
+
+  const handleToggleMembership = (circleId) => {
+    setCircles((prev) =>
+      prev.map((c) => {
+        if (c.id !== circleId) return c;
+
+        const joining = !c.isMember;
+        const nextMembers = Math.max(0, (c.members || 0) + (joining ? 1 : -1));
+
+        return { ...c, isMember: joining, members: nextMembers };
+      })
+    );
+  };
+
+  const filteredCircles = useMemo(() => {
+    const q = query.trim().toLowerCase();
+
+    return circles.filter((c) => {
+      const matchesVisibility =
+        filterVisibility === "all" ? true : c.visibility === filterVisibility;
+
+      const matchesQuery = !q
+        ? true
+        : `${c.name} ${c.description}`.toLowerCase().includes(q);
+
+      return matchesVisibility && matchesQuery;
+    });
+  }, [circles, query, filterVisibility]);
 
   return (
     <>
@@ -138,7 +175,13 @@ export default function Circles() {
                         Private
                       </button>
                     </div>
-                    <p style={{ fontSize: "0.7rem", color: "#6b7280", margin: "0.3rem 0 0" }}>
+                    <p
+                      style={{
+                        fontSize: "0.7rem",
+                        color: "#6b7280",
+                        margin: "0.3rem 0 0",
+                      }}
+                    >
                       {visibility === "public"
                         ? "Discoverable in search. Anyone can request to join."
                         : "Only people with an invite link can find and join."}
@@ -192,51 +235,132 @@ export default function Circles() {
                   Explore Circles
                 </h3>
                 <p className="section-subtitle" style={{ marginTop: 0 }}>
-                  Swipe or drag to browse nearby circles.
+                  Swipe or drag to browse circles.
                 </p>
 
+                {/* Search + Filter */}
+                <div style={{ display: "flex", gap: "0.5rem", margin: "0.6rem 0 0.9rem" }}>
+                  <input
+                    className="input"
+                    placeholder="Search circles..."
+                    value={query}
+                    onChange={(e) => setQuery(e.target.value)}
+                    style={{ flex: 1 }}
+                  />
+                  <div className="pill-toggle-row" style={{ margin: 0 }}>
+                    <button
+                      type="button"
+                      className={
+                        "pill-toggle" + (filterVisibility === "all" ? " pill-toggle--active" : "")
+                      }
+                      onClick={() => setFilterVisibility("all")}
+                    >
+                      All
+                    </button>
+                    <button
+                      type="button"
+                      className={
+                        "pill-toggle" +
+                        (filterVisibility === "public" ? " pill-toggle--active" : "")
+                      }
+                      onClick={() => setFilterVisibility("public")}
+                    >
+                      Public
+                    </button>
+                    <button
+                      type="button"
+                      className={
+                        "pill-toggle" +
+                        (filterVisibility === "private" ? " pill-toggle--active" : "")
+                      }
+                      onClick={() => setFilterVisibility("private")}
+                    >
+                      Private
+                    </button>
+                  </div>
+                </div>
+
                 <CardStack
-                  items={circles}
-                  renderCard={(circle) => (
-                    <>
-                      <div>
-                        <p style={{ fontSize: "0.65rem", color: "#6b7280", margin: "0 0 0.3rem", textTransform: "uppercase", letterSpacing: "0.05em" }}>
-                          {circle.visibility === "public" ? "Public" : "Private"}
-                        </p>
-                        <h4 style={{ fontSize: "1.1rem", fontWeight: "700", margin: "0 0 0.5rem", color: "#111827" }}>
-                          {circle.name}
-                        </h4>
-                        <p style={{ fontSize: "0.8rem", color: "#4b5563", margin: "0 0 1rem", lineHeight: "1.5" }}>
-                          {circle.description}
-                        </p>
-                      </div>
-                      <div>
-                        <p style={{ fontSize: "0.75rem", color: "#6b7280", margin: "0 0 0.6rem" }}>
-                          <span style={{ fontWeight: "600" }}>{circle.members}</span> member{circle.members === 1 ? "" : "s"}
-                        </p>
-                        <button
-                          type="button"
-                          style={{
-                            width: "100%",
-                            borderRadius: "999px",
-                            border: "none",
-                            padding: "0.5rem",
-                            fontSize: "0.8rem",
-                            fontWeight: "600",
-                            background: "#22c55e",
-                            color: "#ffffff",
-                            cursor: "pointer",
-                            boxShadow: "0 8px 16px rgba(34, 197, 94, 0.3)",
-                          }}
-                        >
-                          Join Circle
-                        </button>
-                      </div>
-                    </>
-                  )}
+                  items={filteredCircles}
+                  renderCard={(circle) => {
+                    const isPublic = circle.visibility === "public";
+                    const isMember = !!circle.isMember;
+
+                    return (
+                      <>
+                        <div>
+                          <p
+                            style={{
+                              fontSize: "0.65rem",
+                              color: "#6b7280",
+                              margin: "0 0 0.3rem",
+                              textTransform: "uppercase",
+                              letterSpacing: "0.05em",
+                            }}
+                          >
+                            {isPublic ? "Public" : "Private"}
+                          </p>
+
+                          <h4
+                            style={{
+                              fontSize: "1.1rem",
+                              fontWeight: "700",
+                              margin: "0 0 0.5rem",
+                              color: "#111827",
+                            }}
+                          >
+                            {circle.name}
+                          </h4>
+
+                          <p
+                            style={{
+                              fontSize: "0.8rem",
+                              color: "#4b5563",
+                              margin: "0 0 1rem",
+                              lineHeight: "1.5",
+                            }}
+                          >
+                            {circle.description}
+                          </p>
+                        </div>
+
+                        <div>
+                          <p style={{ fontSize: "0.75rem", color: "#6b7280", margin: "0 0 0.6rem" }}>
+                            <span style={{ fontWeight: "600" }}>{circle.members}</span> member
+                            {circle.members === 1 ? "" : "s"}
+                            {isMember ? (
+                              <span style={{ marginLeft: "0.5rem", fontWeight: 600, color: "#059669" }}>
+                                • Joined
+                              </span>
+                            ) : null}
+                          </p>
+
+                          <button
+                            type="button"
+                            onClick={() => handleToggleMembership(circle.id)}
+                            disabled={false}
+                            style={{
+                              width: "100%",
+                              borderRadius: "999px",
+                              border: "none",
+                              padding: "0.5rem",
+                              fontSize: "0.8rem",
+                              fontWeight: "600",
+                              background: isMember ? "#e5e7eb" : "#22c55e",
+                              color: isMember ? "#111827" : "#ffffff",
+                              cursor: "pointer",
+                              boxShadow: isMember ? "none" : "0 8px 16px rgba(34, 197, 94, 0.3)",
+                            }}
+                          >
+                            {isMember ? "Leave Circle" : "Join Circle"}
+                          </button>
+                        </div>
+                      </>
+                    );
+                  }}
                   onEmptyAction={() => (
                     <p style={{ fontSize: "0.8rem", color: "#6b7280" }}>
-                      No circles yet. Be the first to create one!
+                      No matches. Try a different search, or create a Circle.
                     </p>
                   )}
                 />
