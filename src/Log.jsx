@@ -1,5 +1,5 @@
 // src/Log.jsx
-import React from "react";
+import React, { useMemo, useState } from "react";
 import { useSosToggle, useNavigation, normalizePath } from "./navigation";
 import BottomNav, { SOSOverlay } from "./BottomNav";
 
@@ -10,22 +10,192 @@ function Log() {
   // Normalize the current path (works with your hash-based router)
   const currentPath = normalizePath(path || "/");
 
+  // Helper: treat "/x" and "/x/" as the same
+  const stripTrailingSlash = (p) => (p.endsWith("/") && p !== "/" ? p.slice(0, -1) : p);
+  const route = stripTrailingSlash(currentPath);
+
   // Decide which sub-screen to show based on the path
   let view = "daily";
-  if (currentPath === "/log/milestone/") {
-    view = "milestone";
-  } else if (currentPath === "/log/goal/") {
-    view = "goal";
-  } else if (currentPath === "/log/trigger/") {
-    view = "trigger";
-  } else {
-    view = "daily"; // "/log/" or anything else falls back to daily
-  }
+  if (route === "/log/milestone") view = "milestone";
+  else if (route === "/log/goal") view = "goal";
+  else if (route === "/log/trigger") view = "trigger";
+  else view = "daily";
 
-  const goToDaily = () => {
+  // ---------- localStorage helpers (v1 persistence) ----------
+  const LS_KEY = "cirkely_log_entries_v1";
+
+  const readEntries = () => {
+    try {
+      const raw = localStorage.getItem(LS_KEY);
+      return raw ? JSON.parse(raw) : [];
+    } catch {
+      return [];
+    }
+  };
+
+  const writeEntries = (entries) => {
+    try {
+      localStorage.setItem(LS_KEY, JSON.stringify(entries));
+    } catch {
+      // no-op
+    }
+  };
+
+  const appendEntry = (entry) => {
+    const existing = readEntries();
+    const next = [{ id: crypto?.randomUUID?.() || String(Date.now()), ...entry }, ...existing];
+    writeEntries(next);
+    return next;
+  };
+
+  // ---------- Daily Log state ----------
+  const moodOptions = useMemo(
+    () => [
+      { key: "grateful", label: "🙏 Grateful" },
+      { key: "okay", label: "🙂 Okay" },
+      { key: "stressed", label: "😟 Stressed" },
+      { key: "low", label: "😞 Low" },
+      { key: "energized", label: "🔥 Energized" },
+    ],
+    []
+  );
+
+  const [dailyDate, setDailyDate] = useState("Today");
+  const [dailyMood, setDailyMood] = useState("grateful");
+  const [dailyCravings, setDailyCravings] = useState("");
+  const [dailyWins, setDailyWins] = useState("");
+  const [toast, setToast] = useState("");
+
+  const showToast = (msg) => {
+    setToast(msg);
+    window.clearTimeout(showToast._t);
+    showToast._t = window.setTimeout(() => setToast(""), 2200);
+  };
+
+  const saveDaily = () => {
+    appendEntry({
+      type: "daily",
+      dateLabel: dailyDate,
+      mood: dailyMood,
+      cravings: dailyCravings,
+      wins: dailyWins,
+      createdAt: new Date().toISOString(),
+    });
+    showToast("Saved your daily check-in ✅");
+    setDailyCravings("");
+    setDailyWins("");
+  };
+
+  // ---------- Milestone state ----------
+  const [msTitle, setMsTitle] = useState("");
+  const [msDate, setMsDate] = useState("");
+  const [msNotes, setMsNotes] = useState("");
+
+  const saveMilestone = () => {
+    if (!msTitle.trim()) return showToast("Add a milestone title first.");
+    appendEntry({
+      type: "milestone",
+      title: msTitle.trim(),
+      date: msDate || null,
+      notes: msNotes.trim() || null,
+      createdAt: new Date().toISOString(),
+    });
+    showToast("Milestone saved 🏁");
+    setMsTitle("");
+    setMsDate("");
+    setMsNotes("");
     navigate("/log/");
   };
 
+  // ---------- Goal state ----------
+  const reminderOptions = useMemo(
+    () => [
+      { key: "daily", label: "Daily" },
+      { key: "weekly", label: "Weekly" },
+      { key: "target_only", label: "On target date only" },
+      { key: "none", label: "No reminders" },
+    ],
+    []
+  );
+
+  const [goalText, setGoalText] = useState("");
+  const [goalTargetDate, setGoalTargetDate] = useState("");
+  const [goalWhy, setGoalWhy] = useState("");
+  const [goalReminder, setGoalReminder] = useState("weekly");
+
+  const saveGoal = () => {
+    if (!goalText.trim()) return showToast("Add a goal first.");
+    appendEntry({
+      type: "goal",
+      goal: goalText.trim(),
+      targetDate: goalTargetDate || null,
+      why: goalWhy.trim() || null,
+      reminder: goalReminder,
+      createdAt: new Date().toISOString(),
+    });
+    showToast("Goal saved 🎯");
+    setGoalText("");
+    setGoalTargetDate("");
+    setGoalWhy("");
+    setGoalReminder("weekly");
+    navigate("/log/");
+  };
+
+  // ---------- Trigger state ----------
+  const triggerTypes = useMemo(
+    () => [
+      { key: "person", label: "Person" },
+      { key: "place", label: "Place" },
+      { key: "thing", label: "Thing" },
+      { key: "date_event", label: "Date / event" },
+    ],
+    []
+  );
+
+  const [triggerType, setTriggerType] = useState("person");
+  const [triggerName, setTriggerName] = useState("");
+  const [triggerDetails, setTriggerDetails] = useState("");
+  const [triggerLocation, setTriggerLocation] = useState("");
+  const [triggerEventDate, setTriggerEventDate] = useState("");
+
+  const [notifyOnEnter, setNotifyOnEnter] = useState(false);
+  const [notifyOnEvent, setNotifyOnEvent] = useState(false);
+  const [notifyMorning, setNotifyMorning] = useState(false);
+
+  const saveTrigger = () => {
+    if (!triggerName.trim()) return showToast("Name the trigger first.");
+    appendEntry({
+      type: "trigger",
+      triggerType,
+      name: triggerName.trim(),
+      details: triggerDetails.trim() || null,
+      location: triggerLocation.trim() || null,
+      eventDate: triggerEventDate || null,
+      reminders: {
+        notifyOnEnter,
+        notifyOnEvent,
+        notifyMorning,
+      },
+      createdAt: new Date().toISOString(),
+    });
+    showToast("Trigger saved 🧠");
+    setTriggerName("");
+    setTriggerDetails("");
+    setTriggerLocation("");
+    setTriggerEventDate("");
+    setNotifyOnEnter(false);
+    setNotifyOnEvent(false);
+    setNotifyMorning(false);
+    navigate("/log/");
+  };
+
+  // ---------- navigation helpers ----------
+  const goToDaily = () => navigate("/log/");
+  const goToMilestone = () => navigate("/log/milestone/");
+  const goToGoal = () => navigate("/log/goal/");
+  const goToTrigger = () => navigate("/log/trigger/");
+
+  // ---------- renderers ----------
   const renderDailyLog = () => (
     <section style={{ marginBottom: "1.2rem" }}>
       <h2 className="section-title">
@@ -36,19 +206,47 @@ function Log() {
         Capture how you’re feeling and any triggers, cravings, or wins from today.
       </p>
 
+      {/* Quick actions */}
+      <div className="form-field">
+        <label className="form-label">Quick actions</label>
+        <div className="pill-toggle-row">
+          <button type="button" className="pill-toggle" onClick={goToMilestone}>
+            Milestone
+          </button>
+          <button type="button" className="pill-toggle" onClick={goToGoal}>
+            Goal
+          </button>
+          <button type="button" className="pill-toggle" onClick={goToTrigger}>
+            Trigger
+          </button>
+        </div>
+      </div>
+
       <div className="form-field">
         <label className="form-label">Date</label>
-        <input className="input" defaultValue="Today" />
+        <input
+          className="input"
+          value={dailyDate}
+          onChange={(e) => setDailyDate(e.target.value)}
+        />
       </div>
 
       <div className="form-field">
         <label className="form-label">How are you feeling?</label>
         <div className="mood-row">
-          <span className="mood-pill mood-pill--strong">🙏 Grateful</span>
-          <span className="mood-pill">🙂 Okay</span>
-          <span className="mood-pill">😟 Stressed</span>
-          <span className="mood-pill">😞 Low</span>
-          <span className="mood-pill">🔥 Energized</span>
+          {moodOptions.map((m) => {
+            const active = dailyMood === m.key;
+            return (
+              <button
+                key={m.key}
+                type="button"
+                className={`mood-pill ${active ? "mood-pill--strong" : ""}`}
+                onClick={() => setDailyMood(m.key)}
+              >
+                {m.label}
+              </button>
+            );
+          })}
         </div>
       </div>
 
@@ -57,7 +255,9 @@ function Log() {
         <textarea
           className="textarea"
           placeholder="What came up for you today?"
-        ></textarea>
+          value={dailyCravings}
+          onChange={(e) => setDailyCravings(e.target.value)}
+        />
       </div>
 
       <div className="form-field">
@@ -65,60 +265,64 @@ function Log() {
         <textarea
           className="textarea"
           placeholder="Big or small, they all count."
-        ></textarea>
+          value={dailyWins}
+          onChange={(e) => setDailyWins(e.target.value)}
+        />
       </div>
 
       <button
+        type="button"
         className="btn-primary"
         style={{ width: "100%", marginTop: "0.4rem" }}
+        onClick={saveDaily}
       >
         Save entry
       </button>
 
+      {toast ? (
+        <div
+          style={{
+            marginTop: "0.55rem",
+            fontSize: "0.9rem",
+            opacity: 0.9,
+          }}
+        >
+          {toast}
+        </div>
+      ) : null}
+
       <div className="divider" />
 
-      <h3
-        style={{
-          fontSize: "0.9rem",
-          margin: "0.1rem 0 0.3rem",
-        }}
-      >
+      <h3 style={{ fontSize: "0.9rem", margin: "0.1rem 0 0.3rem" }}>
         This week at a glance
       </h3>
       <div className="log-week-grid">
         <div className="log-day log-day--good">
-          Mon
-          <br />
+          Mon<br />
           <strong>😊</strong>
         </div>
         <div className="log-day log-day--ok">
-          Tue
-          <br />
+          Tue<br />
           <strong>😐</strong>
         </div>
         <div className="log-day log-day--good">
-          Wed
-          <br />
+          Wed<br />
           <strong>🙂</strong>
         </div>
         <div className="log-day log-day--bad">
-          Thu
-          <br />
+          Thu<br />
           <strong>😟</strong>
         </div>
         <div className="log-day log-day--good">
-          Fri
-          <br />
+          Fri<br />
           <strong>🔥</strong>
         </div>
         <div className="log-day log-day--ok">
-          Sat
-          <br />
+          Sat<br />
           <strong>😌</strong>
         </div>
         <div className="log-day log-day--good">
-          Sun
-          <br />
+          Sun<br />
           <strong>😊</strong>
         </div>
       </div>
@@ -149,12 +353,19 @@ function Log() {
         <input
           className="input"
           placeholder="e.g., 30 days sober, 1 year, first sober holiday"
+          value={msTitle}
+          onChange={(e) => setMsTitle(e.target.value)}
         />
       </div>
 
       <div className="form-field">
         <label className="form-label">Date</label>
-        <input className="input" type="date" />
+        <input
+          className="input"
+          type="date"
+          value={msDate}
+          onChange={(e) => setMsDate(e.target.value)}
+        />
       </div>
 
       <div className="form-field">
@@ -162,12 +373,16 @@ function Log() {
         <textarea
           className="textarea"
           placeholder="What does this milestone mean to you?"
-        ></textarea>
+          value={msNotes}
+          onChange={(e) => setMsNotes(e.target.value)}
+        />
       </div>
 
       <button
+        type="button"
         className="btn-primary"
         style={{ width: "100%", marginTop: "0.4rem" }}
+        onClick={saveMilestone}
       >
         Save milestone
       </button>
@@ -190,7 +405,7 @@ function Log() {
         <span className="section-title__pill">Intentions</span>
       </h2>
       <p className="section-subtitle">
-        Set clear goals for your recovery so Circely can help you stay on track.
+        Set clear goals for your recovery so Cirkely can help you stay on track.
       </p>
 
       <div className="form-field">
@@ -198,12 +413,19 @@ function Log() {
         <input
           className="input"
           placeholder="e.g., Go to 3 meetings this week"
+          value={goalText}
+          onChange={(e) => setGoalText(e.target.value)}
         />
       </div>
 
       <div className="form-field">
         <label className="form-label">Target date (optional)</label>
-        <input className="input" type="date" />
+        <input
+          className="input"
+          type="date"
+          value={goalTargetDate}
+          onChange={(e) => setGoalTargetDate(e.target.value)}
+        />
       </div>
 
       <div className="form-field">
@@ -211,22 +433,35 @@ function Log() {
         <textarea
           className="textarea"
           placeholder="How will this goal support your recovery?"
-        ></textarea>
+          value={goalWhy}
+          onChange={(e) => setGoalWhy(e.target.value)}
+        />
       </div>
 
       <div className="form-field">
         <label className="form-label">How often should we remind you?</label>
         <div className="pill-toggle-row">
-          <button className="pill-toggle">Daily</button>
-          <button className="pill-toggle">Weekly</button>
-          <button className="pill-toggle">On target date only</button>
-          <button className="pill-toggle">No reminders</button>
+          {reminderOptions.map((r) => {
+            const active = goalReminder === r.key;
+            return (
+              <button
+                key={r.key}
+                type="button"
+                className={`pill-toggle ${active ? "pill-toggle--active" : ""}`}
+                onClick={() => setGoalReminder(r.key)}
+              >
+                {r.label}
+              </button>
+            );
+          })}
         </div>
       </div>
 
       <button
+        type="button"
         className="btn-primary"
         style={{ width: "100%", marginTop: "0.4rem" }}
+        onClick={saveGoal}
       >
         Save goal
       </button>
@@ -253,80 +488,104 @@ function Log() {
         We’ll help remind you next time.
       </p>
 
-      {/* Trigger type */}
       <div className="form-field">
         <label className="form-label">Trigger type</label>
         <div className="pill-toggle-row">
-          <button className="pill-toggle">Person</button>
-          <button className="pill-toggle">Place</button>
-          <button className="pill-toggle">Thing</button>
-          <button className="pill-toggle">Date / event</button>
+          {triggerTypes.map((t) => {
+            const active = triggerType === t.key;
+            return (
+              <button
+                key={t.key}
+                type="button"
+                className={`pill-toggle ${active ? "pill-toggle--active" : ""}`}
+                onClick={() => setTriggerType(t.key)}
+              >
+                {t.label}
+              </button>
+            );
+          })}
         </div>
       </div>
 
-      {/* Trigger name */}
       <div className="form-field">
         <label className="form-label">What is the trigger?</label>
         <input
           className="input"
           placeholder="e.g., Sports game, Cousin Mike, Liquor aisle"
+          value={triggerName}
+          onChange={(e) => setTriggerName(e.target.value)}
         />
       </div>
 
-      {/* Description */}
       <div className="form-field">
         <label className="form-label">Details (optional)</label>
         <textarea
           className="textarea"
           placeholder="Describe why this is a trigger or what usually happens."
-        ></textarea>
+          value={triggerDetails}
+          onChange={(e) => setTriggerDetails(e.target.value)}
+        />
       </div>
 
-      {/* Location */}
       <div className="form-field">
         <label className="form-label">Location (optional)</label>
         <input
           className="input"
           placeholder="e.g., Prudential Center, home, bar on Main St"
+          value={triggerLocation}
+          onChange={(e) => setTriggerLocation(e.target.value)}
         />
       </div>
 
-      {/* Reminder settings */}
-      <h3
-        style={{
-          fontSize: "0.9rem",
-          margin: "0.4rem 0 0.25rem",
-        }}
-      >
+      <h3 style={{ fontSize: "0.9rem", margin: "0.4rem 0 0.25rem" }}>
         Reminder settings
       </h3>
       <p className="section-subtitle" style={{ marginTop: 0 }}>
-        Choose how proactive you want Circely to be around this trigger.
+        Choose how proactive you want Cirkely to be around this trigger.
       </p>
 
       <div className="checkbox-list">
         <label className="checkbox-item">
-          <input type="checkbox" />
+          <input
+            type="checkbox"
+            checked={notifyOnEnter}
+            onChange={(e) => setNotifyOnEnter(e.target.checked)}
+          />
           <span>Notify me when I enter this location</span>
         </label>
         <label className="checkbox-item">
-          <input type="checkbox" />
+          <input
+            type="checkbox"
+            checked={notifyOnEvent}
+            onChange={(e) => setNotifyOnEvent(e.target.checked)}
+          />
           <span>Send a reminder the next time this event occurs</span>
         </label>
         <label className="checkbox-item">
-          <input type="checkbox" />
+          <input
+            type="checkbox"
+            checked={notifyMorning}
+            onChange={(e) => setNotifyMorning(e.target.checked)}
+          />
           <span>Send a morning awareness reminder</span>
         </label>
       </div>
 
       <div className="form-field">
         <label className="form-label">Event date (optional)</label>
-        <input className="input" type="date" />
+        <input
+          className="input"
+          type="date"
+          value={triggerEventDate}
+          onChange={(e) => setTriggerEventDate(e.target.value)}
+        />
       </div>
 
       <button
+        type="button"
         className="btn-primary"
         style={{ width: "100%", marginTop: "0.6rem" }}
+        onClick={saveTrigger}
       >
         Save trigger
       </button>
@@ -347,7 +606,7 @@ function Log() {
           <header className="home-phone__header">
             <div className="home-phone__brand">
               <p className="home-phone__eyebrow">NextCircle.org</p>
-              <h1 className="home-phone__title">Circely</h1>
+              <h1 className="home-phone__title">Cirkely</h1>
             </div>
           </header>
 
